@@ -443,7 +443,7 @@
     <!-- 測驗規則說明卡 -->
     <div class="exam-info-card">
       <div class="exam-info-text">
-        <h2>第一階段駐點資格筆試模擬測驗（逐題解鎖制）</h2>
+        <h2>第一階段駐點資格筆試模擬測驗</h2>
         <p>本測驗採「逐題作答解鎖」機制，完成當前題目並點擊確認後，系統將自動顯示下一題。</p>
       </div>
       <div class="exam-rules">
@@ -464,13 +464,13 @@
     <form id="quizForm" onsubmit="return false;">
       <!-- 第一部分：複選題 -->
       <div id="secBanner1" class="section-banner visible">
-        壹、專業進階複選題（第 1～10 題，每題 5 分，每題均有 2～4 個正確選項，全對給分）
+        壹、複選題（第 1～10 題，每題 5 分，全對給分）
       </div>
       <div id="mcqContainer"></div>
 
       <!-- 第二部分：簡答題 -->
       <div id="secBanner2" class="section-banner">
-        貳、核心實務簡答題（第 11～20 題，每題 5 分，系統依同義詞與關鍵字權重自動批改）
+        貳、簡答題（第 11～20 題，每題 5 分）
       </div>
       <div id="saContainer"></div>
 
@@ -478,7 +478,7 @@
       <div id="submitZone" class="submit-zone">
         <h3 style="color: var(--gov-navy); margin-bottom: 8px;">已完成全部 20 題作答！</h3>
         <p style="color: var(--text-sub); margin-bottom: 18px; font-size: 0.95rem;">您可以向上捲動檢查或修改答案，確認無誤後請點擊下方按鈕進行系統批改。</p>
-        <button type="button" class="btn-submit" onclick="submitQuiz()">正式交卷並執行系統自動批改</button>
+        <button type="button" class="btn-submit" onclick="submitQuiz()">正式交卷</button>
       </div>
     </form>
   </div>
@@ -839,7 +839,7 @@ function renderQuiz() {
           <div class="q-title"><span class="q-type-badge" style="background:#0f766e;">簡答題</span>${item.q}</div>
           <div class="q-score-tag" id="score-tag-${globalIdx}">配分：5 分</div>
         </div>
-        <textarea id="sa-input-${sIdx}" placeholder="請在此輸入您的答案（系統支援同義詞如：無下陷/未下陷/沒下陷、20cm/20公分/0.2m 等自動比對）..."></textarea>
+        <textarea id="sa-input-${sIdx}" placeholder="請在此輸入您的答案..."></textarea>
         <div class="sa-hint">提示：直接寫出重點關鍵字或數據即可，無須拘泥標點符號與完整句型。</div>
         <div class="card-actions" id="actions-${globalIdx}">
           <span class="error-msg" id="err-${globalIdx}">請填寫答案內容後再解鎖下一題！</span>
