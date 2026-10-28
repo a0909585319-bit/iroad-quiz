@@ -3,943 +3,420 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>新北市智慧道路管理中心｜駐點人員資格線上測驗系統</title>
+  <title>iROAD 監控終端</title>
   <style>
+    /* 科技感暗黑主題變數 */
     :root {
-      --gov-navy: #0c2340;
-      --gov-blue: #1d4ed8;
-      --gov-blue-light: #eff6ff;
-      --gov-gold: #d97706;
-      --success: #15803d;
-      --success-bg: #f0fdf4;
-      --error: #b91c1c;
-      --error-bg: #fef2f2;
-      --warning: #b45309;
-      --warning-bg: #fffbeb;
-      --border: #cbd5e1;
-      --text-main: #0f172a;
-      --text-sub: #475569;
-      --bg-page: #e2e8f0;
+      --bg-dark: #0f172a; --bg-card: #1e293b; --bg-modal: #0f172ae6;
+      --text-main: #f8fafc; --text-sub: #94a3b8;
+      --accent: #38bdf8; --accent-hover: #0ea5e9;
+      --danger: #ef4444; --danger-hover: #dc2626;
+      --warning: #f59e0b; --warning-hover: #d97706;
+      --success: #10b981; --success-hover: #059669;
+      --border: #334155;
     }
 
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * { box-sizing: border-box; }
+    body { font-family: "Microsoft JhengHei", "Courier New", monospace; background: var(--bg-dark); color: var(--text-main); margin: 0; padding: 20px; line-height: 1.6; }
+    
+    /* 頂部導覽列 */
+    .top-bar { display: flex; justify-content: space-between; align-items: center; background: var(--bg-card); padding: 15px 25px; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 4px 15px rgba(0,0,0,0.3); margin-bottom: 25px; }
+    .logo { font-size: 1.6rem; font-weight: bold; color: var(--accent); display: flex; align-items: center; gap: 10px; letter-spacing: 1px;}
+    .sys-tools { display: flex; gap: 12px; }
+    .btn-tool { background: transparent; color: var(--text-main); border: 1px solid var(--border); padding: 8px 16px; border-radius: 6px; cursor: pointer; transition: 0.2s; font-weight: bold;}
+    .btn-tool:hover { background: var(--border); color: var(--accent); }
 
-    body {
-      font-family: "Microsoft JhengHei", "PingFang TC", -apple-system, BlinkMacSystemFont, sans-serif;
-      background-color: var(--bg-page);
-      color: var(--text-main);
-      line-height: 1.65;
-      padding-bottom: 60px;
-    }
+    /* 案件輸入區 */
+    .input-zone { display: flex; gap: 15px; max-width: 600px; margin-bottom: 25px; }
+    .input-zone input { flex: 1; padding: 12px 15px; border: 1px solid var(--border); background: var(--bg-card); color: white; border-radius: 8px; font-size: 1.1rem; outline: none;}
+    .input-zone input:focus { border-color: var(--accent); box-shadow: 0 0 10px rgba(56, 189, 248, 0.2); }
+    .btn-add { background: var(--accent); color: var(--bg-dark); border: none; padding: 12px 25px; border-radius: 8px; font-weight: bold; font-size: 1.1rem; cursor: pointer; transition: 0.2s; }
+    .btn-add:hover { background: var(--accent-hover); box-shadow: 0 0 15px rgba(56, 189, 248, 0.4); }
 
-    /* 政府機關頂部導覽列 */
-    .gov-topbar {
-      background: linear-gradient(90deg, var(--gov-navy) 0%, #1e3a8a 100%);
-      color: #ffffff;
-      padding: 14px 24px;
-      border-bottom: 4px solid var(--gov-gold);
-      box-shadow: 0 2px 8px rgba(0,0,0,0.15);
-      position: sticky;
-      top: 0;
-      z-index: 100;
-    }
-    .topbar-inner {
-      max-width: 960px;
-      margin: 0 auto;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 12px;
-    }
-    .gov-brand {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-    }
-    .gov-emblem {
-      background: #ffffff;
-      color: var(--gov-navy);
-      font-weight: 900;
-      font-size: 0.9rem;
-      padding: 4px 10px;
-      border-radius: 4px;
-      letter-spacing: 1px;
-    }
-    .gov-title {
-      font-size: 1.2rem;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-    }
-    .status-Widgets {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      font-size: 0.92rem;
-    }
-    .badge-box {
-      background: rgba(255,255,255,0.12);
-      padding: 5px 12px;
-      border-radius: 6px;
-      border: 1px solid rgba(255,255,255,0.25);
-    }
+    /* 戰情面板網格 */
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 20px; }
+    .case-card { background: var(--bg-card); border: 1px solid var(--border); padding: 20px; border-radius: 12px; display: flex; flex-direction: column; position: relative; overflow: hidden; transition: transform 0.2s;}
+    .case-card:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(0,0,0,0.4); }
+    
+    /* 狀態燈號列 */
+    .card-indicator { height: 4px; width: 100%; position: absolute; top: 0; left: 0; background: var(--border); }
+    .case-card.status-danger .card-indicator { background: var(--danger); box-shadow: 0 0 10px var(--danger); }
+    .case-card.status-warning .card-indicator { background: var(--warning); box-shadow: 0 0 10px var(--warning); }
+    .case-card.status-success .card-indicator { background: var(--success); box-shadow: 0 0 10px var(--success); }
 
-    /* 進度條 */
-    .progress-wrap {
-      background: #cbd5e1;
-      height: 8px;
-      width: 100%;
-    }
-    .progress-bar {
-      background: var(--gov-gold);
-      height: 100%;
-      width: 0%;
-      transition: width 0.35s ease;
-    }
+    .case-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; margin-top: 5px;}
+    .case-id { font-size: 1.4rem; font-weight: bold; color: var(--text-main); letter-spacing: 1px;}
+    .case-remove { color: var(--text-sub); cursor: pointer; font-size: 0.9rem; }
+    .case-remove:hover { color: var(--danger); }
+    
+    .status-text { font-size: 0.95rem; color: var(--accent); margin-bottom: 15px; font-weight: bold; background: rgba(56, 189, 248, 0.1); padding: 8px; border-radius: 6px; border-left: 3px solid var(--accent);}
+    .status-text.alert { color: var(--danger); background: rgba(239, 68, 68, 0.1); border-color: var(--danger); }
+    
+    /* 計時器 */
+    .timer-display { font-size: 2.2rem; font-weight: bold; color: var(--danger); text-align: center; margin: 15px 0; display: none; background: rgba(0,0,0,0.2); border-radius: 8px; padding: 10px; font-family: monospace; letter-spacing: 3px; border: 1px solid rgba(239,68,68,0.3);}
 
-    .container {
-      max-width: 960px;
-      margin: 28px auto 0;
-      padding: 0 16px;
-    }
+    /* 按鈕群組 */
+    .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 15px; }
+    .btn-action { background: rgba(255,255,255,0.05); color: var(--text-main); border: 1px solid var(--border); padding: 10px; border-radius: 6px; cursor: pointer; font-size: 0.95rem; font-weight: bold; transition: 0.2s; text-align: center;}
+    .btn-action:hover { background: rgba(255,255,255,0.1); }
+    .btn-action.red:hover { border-color: var(--danger); color: var(--danger); }
+    .btn-action.yellow:hover { border-color: var(--warning); color: var(--warning); }
+    .btn-action.green:hover { border-color: var(--success); color: var(--success); }
 
-    /* 考前準備畫面遮罩/卡片 */
-    #startModal {
-      background: #ffffff;
-      border-radius: 12px;
-      padding: 36px 30px;
-      text-align: center;
-      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1);
-      border-top: 6px solid var(--gov-navy);
-      margin-top: 10px;
-    }
-    #startModal h2 {
-      font-size: 1.6rem;
-      color: var(--gov-navy);
-      margin-bottom: 12px;
-    }
-    #startModal p {
-      color: var(--text-sub);
-      margin-bottom: 24px;
-      font-size: 1.02rem;
-    }
-    .btn-start-exam {
-      background: linear-gradient(90deg, var(--gov-navy) 0%, var(--gov-blue) 100%);
-      color: #ffffff;
-      border: none;
-      padding: 14px 36px;
-      font-size: 1.15rem;
-      font-weight: 700;
-      border-radius: 8px;
-      cursor: pointer;
-      box-shadow: 0 4px 12px rgba(12, 35, 64, 0.25);
-      transition: transform 0.15s;
-    }
-    .btn-start-exam:hover {
-      transform: translateY(-2px);
-    }
+    .bottom-actions { display: flex; flex-direction: column; gap: 10px; margin-top: auto; }
+    .btn-log { background: var(--border); color: white; border: none; padding: 12px; border-radius: 6px; cursor: pointer; font-weight: bold; display: flex; justify-content: center; gap: 8px; transition: 0.2s;}
+    .btn-log:hover { background: #475569; }
+    .report-group { display: flex; gap: 10px; }
+    .btn-report { flex: 1; background: transparent; border: 1px solid var(--accent); color: var(--accent); padding: 10px; border-radius: 6px; font-size: 0.9rem; font-weight: bold; cursor: pointer; transition: 0.2s;}
+    .btn-report:hover { background: var(--accent); color: var(--bg-dark); }
+    .btn-emergency { flex: 1; background: transparent; border: 1px solid var(--danger); color: var(--danger); padding: 10px; border-radius: 6px; font-size: 0.9rem; font-weight: bold; cursor: pointer; transition: 0.2s;}
+    .btn-emergency:hover { background: var(--danger); color: white; }
 
-    /* 考試主體區域（初始隱藏，點擊開始後顯示） */
-    #examBody {
-      display: none;
-    }
+    /* Modal (彈出視窗) 樣式 */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-modal); z-index: 1000; justify-content: center; align-items: center; padding: 20px; backdrop-filter: blur(5px);}
+    .modal-content { background: var(--bg-card); border: 1px solid var(--border); padding: 30px; border-radius: 12px; max-width: 550px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.5);}
+    .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 15px; margin-bottom: 20px;}
+    .modal-header h3 { margin: 0; color: var(--accent); font-size: 1.3rem;}
+    .close-btn { background: none; border: none; color: var(--text-sub); font-size: 1.5rem; cursor: pointer; }
+    .close-btn:hover { color: white; }
 
-    /* 成績總覽橫幅 */
-    .score-banner {
-      display: none;
-      background: #ffffff;
-      padding: 28px;
-      margin-bottom: 28px;
-      border-radius: 10px;
-      text-align: center;
-      border: 3px solid var(--gov-navy);
-      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.1);
-    }
-    .score-banner h2 {
-      font-size: 2rem;
-      color: var(--gov-navy);
-      margin-bottom: 10px;
-    }
-    .pass-badge {
-      display: inline-block;
-      background: var(--success-bg);
-      color: var(--success);
-      border: 2px solid var(--success);
-      padding: 6px 18px;
-      border-radius: 50px;
-      font-weight: 700;
-      font-size: 1.1rem;
-      margin-bottom: 12px;
-    }
-    .fail-badge {
-      display: inline-block;
-      background: var(--error-bg);
-      color: var(--error);
-      border: 2px solid var(--error);
-      padding: 6px 18px;
-      border-radius: 50px;
-      font-weight: 700;
-      font-size: 1.1rem;
-      margin-bottom: 12px;
-    }
+    /* 表單元件 */
+    .form-group { margin-bottom: 15px; }
+    .form-group label { display: block; margin-bottom: 8px; color: var(--text-sub); font-size: 0.9rem; font-weight: bold;}
+    .form-group input, .form-group select { width: 100%; padding: 10px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: white; border-radius: 6px; font-family: inherit; }
+    .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--accent); }
+    .btn-submit { width: 100%; background: var(--accent); color: var(--bg-dark); border: none; padding: 12px; border-radius: 6px; font-weight: bold; font-size: 1.1rem; cursor: pointer; margin-top: 10px;}
+    .btn-submit:hover { background: var(--accent-hover); }
 
-    /* 題目區塊標題 */
-    .section-banner {
-      display: none;
-      background: var(--gov-navy);
-      color: #ffffff;
-      padding: 12px 20px;
-      border-radius: 8px;
-      margin: 28px 0 16px;
-      font-size: 1.15rem;
-      font-weight: 700;
-      letter-spacing: 0.5px;
-    }
-    .section-banner.visible {
-      display: block;
-    }
+    /* 計算機結果區 */
+    .calc-result { background: rgba(16, 185, 129, 0.1); border: 1px dashed var(--success); padding: 15px; border-radius: 8px; margin-top: 15px; color: var(--success); font-weight: bold; display: none;}
+    .calc-result.fail { background: rgba(239, 68, 68, 0.1); border-color: var(--danger); color: var(--danger); }
 
-    /* 題目卡片 */
-    .q-card {
-      display: none;
-      background: #ffffff;
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 24px;
-      margin-bottom: 20px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.04);
-      animation: fadeIn 0.35s ease;
-    }
-    .q-card.unlocked {
-      display: block;
-    }
-    .q-card.active-card {
-      border: 2px solid var(--gov-blue);
-      box-shadow: 0 8px 20px -4px rgba(29, 78, 216, 0.15);
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(12px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .q-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      gap: 12px;
-      margin-bottom: 16px;
-      padding-bottom: 12px;
-      border-bottom: 1px dashed var(--border);
-    }
-    .q-type-badge {
-      background: var(--gov-navy);
-      color: #fff;
-      font-size: 0.78rem;
-      padding: 3px 8px;
-      border-radius: 4px;
-      margin-right: 8px;
-      vertical-align: middle;
-    }
-    .q-title {
-      font-weight: 700;
-      font-size: 1.08rem;
-      flex: 1;
-      color: var(--text-main);
-    }
-    .q-score-tag {
-      font-size: 0.85rem;
-      padding: 4px 10px;
-      border-radius: 6px;
-      background: #f1f5f9;
-      border: 1px solid var(--border);
-      color: var(--text-sub);
-      font-weight: 600;
-      white-space: nowrap;
-    }
-
-    .options-list {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .option-label {
-      display: flex;
-      align-items: flex-start;
-      gap: 12px;
-      padding: 12px 16px;
-      border-radius: 8px;
-      border: 1px solid var(--border);
-      cursor: pointer;
-      user-select: text;
-      transition: all 0.15s ease;
-      background: #fafafa;
-    }
-    .option-label:hover {
-      background-color: var(--gov-blue-light);
-      border-color: #93c5fd;
-    }
-    .option-label input[type="checkbox"] {
-      width: 18px;
-      height: 18px;
-      margin-top: 3px;
-      cursor: pointer;
-      accent-color: var(--gov-blue);
-    }
-
-    textarea {
-      width: 100%;
-      min-height: 95px;
-      padding: 14px;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      font-family: inherit;
-      font-size: 1rem;
-      background: #fafafa;
-      resize: vertical;
-    }
-    textarea:focus {
-      outline: none;
-      background: #ffffff;
-      border-color: var(--gov-blue);
-      box-shadow: 0 0 0 3px rgba(29, 78, 216, 0.1);
-    }
-    .sa-hint {
-      font-size: 0.84rem;
-      color: var(--text-sub);
-      margin-top: 6px;
-    }
-
-    .card-actions {
-      margin-top: 18px;
-      display: flex;
-      justify-content: flex-end;
-      align-items: center;
-      gap: 12px;
-    }
-    .error-msg {
-      color: var(--error);
-      font-size: 0.88rem;
-      font-weight: 600;
-      display: none;
-    }
-    .btn-next {
-      background-color: var(--gov-blue);
-      color: #ffffff;
-      border: none;
-      padding: 10px 22px;
-      font-size: 0.95rem;
-      font-weight: 600;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: background 0.2s;
-    }
-    .btn-next:hover { background-color: #1e40af; }
-    .btn-next.completed { background-color: #64748b; cursor: default; }
-
-    .feedback-box {
-      margin-top: 16px;
-      padding: 16px;
-      border-radius: 8px;
-      font-size: 0.94rem;
-      display: none;
-    }
-    .correct { background-color: var(--success-bg); border: 1px solid #86efac; color: #14532d; }
-    .wrong { background-color: var(--error-bg); border: 1px solid #fca5a5; color: #7f1d1d; }
-    .partial { background-color: var(--warning-bg); border: 1px solid #fde68a; color: #78350f; }
-
-    .keyword-list {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-      margin: 10px 0;
-    }
-    .kw-tag {
-      padding: 3px 10px;
-      border-radius: 4px;
-      font-size: 0.84rem;
-      font-weight: 600;
-    }
-    .kw-matched { background: #dcfce7; color: var(--success); border: 1px solid #86efac; }
-    .kw-missed { background: #fee2e2; color: var(--error); border: 1px solid #fca5a5; }
-
-    .ref-box {
-      margin-top: 10px;
-      padding: 12px;
-      background: #ffffff;
-      border-left: 4px solid var(--gov-navy);
-      color: var(--text-main);
-      border-radius: 0 6px 6px 0;
-    }
-
-    .submit-zone {
-      display: none;
-      margin-top: 32px;
-      background: #ffffff;
-      padding: 24px;
-      border-radius: 10px;
-      border: 2px solid var(--gov-gold);
-      text-align: center;
-      animation: fadeIn 0.4s ease;
-    }
-    .btn-submit {
-      width: 100%;
-      max-width: 420px;
-      padding: 16px 28px;
-      background: linear-gradient(90deg, var(--gov-navy) 0%, var(--gov-blue) 100%);
-      color: #ffffff;
-      font-size: 1.15rem;
-      font-weight: 700;
-      border: none;
-      border-radius: 8px;
-      cursor: pointer;
-      box-shadow: 0 4px 12px rgba(12, 35, 64, 0.25);
-    }
-    .btn-submit:hover { transform: translateY(-2px); }
+    /* 文本區域 (通話小抄) */
+    .script-box { background: rgba(0,0,0,0.3); border: 1px solid var(--border); padding: 15px; border-radius: 8px; margin-bottom: 15px;}
+    .script-box h4 { margin-top: 0; color: var(--warning); margin-bottom: 10px;}
+    .script-box p { font-size: 0.95rem; margin: 5px 0; color: #cbd5e1;}
+    .script-text { color: var(--text-main); font-weight: bold; font-size: 1.05rem; }
   </style>
 </head>
 <body>
 
   <!-- 頂部導覽列 -->
-  <div class="gov-topbar">
-    <div class="topbar-inner">
-      <div class="gov-brand">
-        <span class="gov-emblem">iROAD</span>
-        <span class="gov-title">新北市智慧道路管理中心｜駐點人員資格線上測驗系統</span>
+  <div class="top-bar">
+    <div class="logo">📡 iROAD 監控終端</div>
+    <div class="sys-tools">
+      <button class="btn-tool" onclick="openModal('calcModal')">🧮 查驗計算機</button>
+      <button class="btn-tool" onclick="openModal('scriptModal')">📞 通話小抄</button>
+      <button class="btn-tool" onclick="openModal('refModal')">📖 深度速查</button>
+    </div>
+  </div>
+
+  <!-- 新增案號區 -->
+  <div class="input-zone">
+    <input type="text" id="newCaseId" placeholder="輸入監控案號 (例: 351908)">
+    <button class="btn-add" onclick="addCase()">➕ 新增監控</button>
+  </div>
+
+  <!-- 戰情面板網格 -->
+  <div class="grid" id="dashboard"></div>
+
+  <!-- ================= Modals ================= -->
+
+  <!-- 1. 逾時通報精靈 Modal -->
+  <div class="modal-overlay" id="overtimeModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>📝 產生常規逾時通報文</h3>
+        <button class="close-btn" onclick="closeModal('overtimeModal')">×</button>
       </div>
-      <div class="status-Widgets">
-        <div class="badge-box">作答進度：<strong id="progressText">0 / 20</strong></div>
-        <div class="badge-box">剩餘時間：<strong id="timerText">20:00</strong></div>
+      <input type="hidden" id="o_caseId">
+      <div class="form-group"><label>通報次數</label>
+        <select id="o_times"><option value="1">第 1 次通報</option><option value="2">第 2 次通報</option><option value="3">第 3 次 (已收工) 通報</option></select>
+      </div>
+      <div class="form-group"><label>施工單位</label><input type="text" id="o_company" value="外包施工廠商"></div>
+      <div class="form-group"><label>路權單位</label><input type="text" id="o_authority" value="區公所"></div>
+      <div class="form-group"><label>施工路段</label><input type="text" id="o_road" value="新北市..."></div>
+      <div class="form-group"><label>佔用情形</label><input type="text" id="o_occupation" value="雙向佔用單側車道"></div>
+      <div class="form-group"><label>原應收工時間 (HH:MM)</label><input type="time" id="o_endTime" value="16:00"></div>
+      <button class="btn-submit" onclick="generateOvertime()">📋 產生並複製通報文</button>
+    </div>
+  </div>
+
+  <!-- 2. 緊急挖損通報 Modal -->
+  <div class="modal-overlay" id="emergencyModal">
+    <div class="modal-content" style="border-color: var(--danger);">
+      <div class="modal-header">
+        <h3 style="color: var(--danger);">🚨 突發/挖損緊急通報</h3>
+        <button class="close-btn" onclick="closeModal('emergencyModal')">×</button>
+      </div>
+      <input type="hidden" id="e_caseId">
+      <div class="form-group"><label>事件類型 (例: 瓦斯管線遭挖損漏氣)</label><input type="text" id="e_event" value="管線遭挖損"></div>
+      <div class="form-group"><label>接獲時間 (HH:MM)</label><input type="time" id="e_time1"></div>
+      <div class="form-group"><label>抵達時間 (HH:MM 或 人員前往中)</label><input type="text" id="e_time2" value="人員前往中"></div>
+      <div class="form-group"><label>處理情形 (例: 刻正進行止氣 / 開挖搶修中)</label><input type="text" id="e_action" value="現場待命協調中"></div>
+      <div class="form-group"><label>管線形式 (管徑、材質)</label><input type="text" id="e_type" value="待釐清"></div>
+      <div class="form-group"><label>影響範圍 (戶數)</label><input type="text" id="e_impact" value="待釐清"></div>
+      <div class="form-group"><label>現場負責人與電話</label><input type="text" id="e_pic" value="王大明 0912345678"></div>
+      <button class="btn-submit" style="background: var(--danger); color: white;" onclick="generateEmergency()">🚨 產生緊急通報文</button>
+    </div>
+  </div>
+
+  <!-- 3. 自動查驗計算機 Modal -->
+  <div class="modal-overlay" id="calcModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>🧮 自主查驗自動判定機</h3>
+        <button class="close-btn" onclick="closeModal('calcModal')">×</button>
+      </div>
+      <!-- AC厚度計算 -->
+      <div class="script-box">
+        <h4>🚧 AC 厚度判定</h4>
+        <div class="form-group"><label>管溝 AC 厚度 (cm) [規範≥20]</label><input type="number" id="c_ac1" placeholder="輸入數值" oninput="checkAC()"></div>
+        <div class="form-group"><label>面層 AC 厚度 (cm) [規範≥5]</label><input type="number" id="c_ac2" placeholder="輸入數值" oninput="checkAC()"></div>
+        <div id="acResult" class="calc-result"></div>
+      </div>
+      <!-- 平整度點位計算 -->
+      <div class="script-box">
+        <h4>📏 平整度量測點位計算</h4>
+        <div class="form-group"><label>管溝總長度 (m)</label><input type="number" id="c_len" placeholder="輸入長度" oninput="checkPoints()"></div>
+        <div id="lenResult" class="calc-result"></div>
       </div>
     </div>
   </div>
-  <div class="progress-wrap">
-    <div class="progress-bar" id="progressBar"></div>
+
+  <!-- 4. 通話小抄 Modal -->
+  <div class="modal-overlay" id="scriptModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>📞 缺失溝通話術小抄</h3>
+        <button class="close-btn" onclick="closeModal('scriptModal')">×</button>
+      </div>
+      <div class="script-box">
+        <h4>無畫面 / 遮擋鏡頭 (限15分)</h4>
+        <p class="script-text">「您好，道管中心。請問是案號XXX現場負責人嗎？我們系統看你們攝影機沒有畫面 / 被擋住了。請立刻調整，規定要在15分鐘內改善完成，我們這邊已經開始計時，弄好請在群組回報，逾時會記點，謝謝。」</p>
+      </div>
+      <div class="script-box">
+        <h4>未拍管溝 / 澆置 (限30分)</h4>
+        <p class="script-text">「您好，道管中心。系統看你們正在挖管溝(或澆置)，但鏡頭沒有對準施工位置(或沒拍到車牌)。麻煩立刻移好攝影機。持續30分鐘沒改善會被記點，調整好請在群組講一下。」</p>
+      </div>
+      <div class="script-box">
+        <h4>照片不符規定 (如：用錯尺)</h4>
+        <p class="script-text">「您好，道管中心。你們剛傳的查驗照片有問題，例如平整度要用『半米尺規』，這張不符規定無法審核。請立刻重測重拍上傳，以免影響結案。」</p>
+      </div>
+    </div>
   </div>
 
-  <div class="container">
-    <!-- 考前確認畫面 -->
-    <div id="startModal">
-      <h2>新北市智慧道路管理中心 駐點人員資格筆試模擬測驗</h2>
-      <p>本測驗共 20 題（複選 10 題、簡答 10 題），總分 100 分，及格標準為 80 分。<br>採「逐題解鎖制」，點擊下方按鈕後將立即開始計時（<strong>限時 20 分鐘</strong>），請準備好後再點擊開始。</p>
-      <button type="button" class="btn-start-exam" onclick="startExam()">確認開始作答</button>
-    </div>
-
-    <!-- 考試主體區域 -->
-    <div id="examBody">
-      <!-- 成績結果看板 -->
-      <div id="scoreBanner" class="score-banner">
-        <div id="statusBadge"></div>
-        <h2>測驗總得分：<span id="scoreText">0</span> / 100 分</h2>
-        <div id="scoreFeedback" style="font-size: 1.05rem; color: var(--text-sub); margin-bottom: 12px;"></div>
+  <!-- 5. 深度速查 Modal -->
+  <div class="modal-overlay" id="refModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>📖 管線埋設深度法定標準</h3>
+        <button class="close-btn" onclick="closeModal('refModal')">×</button>
       </div>
-
-      <form id="quizForm" onsubmit="return false;">
-        <div id="secBanner1" class="section-banner visible">
-          壹、複選題（第 1～10 題，每題 5 分）
-        </div>
-        <div id="mcqContainer"></div>
-
-        <div id="secBanner2" class="section-banner">
-          貳、簡答題（第 11～20 題，每題 5 分）
-        </div>
-        <div id="saContainer"></div>
-
-        <div id="submitZone" class="submit-zone">
-          <h3 style="color: var(--gov-navy); margin-bottom: 8px;">已完成全部 20 題作答！</h3>
-          <p style="color: var(--text-sub); margin-bottom: 18px; font-size: 0.95rem;">確認無誤後請點擊下方按鈕進行系統批改。</p>
-          <button type="button" class="btn-submit" onclick="submitQuiz()">正式交卷</button>
-        </div>
-      </form>
+      <ul style="color: var(--text-main); font-size: 1.1rem; line-height: 2;">
+        <li>🚗 <b>快、慢車道：</b> 應達 120 公分以上</li>
+        <li>🏠 <b>巷道 (4公尺以下)：</b> 應達 70 公分以上</li>
+        <li>🚶 <b>人行道：</b> 應達 50 公分以上</li>
+        <li>⚠️ <b>結構補強保護：</b> 最低應達 30 公分以上</li>
+        <hr style="border-color: var(--border);">
+        <p style="font-size: 0.95rem; color: var(--warning);">※ 白板必填：日期、名稱、案號、地點、測點編號、埋深數值。<br>※ 點位：起訖、水平轉折、深度轉折、分支、每20公尺。</p>
+      </ul>
     </div>
   </div>
 
 <script>
-const mcqData = [
-  {
-    q: "1. 關於管線埋設深度（管頂至路面距離）之法定標準與例外補強規範，下列哪些選項正確？",
-    options: [
-      "A. 快、慢車道之管線埋深應達 120 公分以上",
-      "B. 巷道寬度 4 公尺以下者，管線埋深應達 70 公分以上",
-      "C. 人行道管線埋深標準為 30 公分以上即可，無須加作補強設施",
-      "D. 無法達法定標準者，經加作適當結構補強設施保護，最低應達 30 公分以上",
-      "E. 快慢車道若經加作適當結構補強設施保護，最低可放寬至 15 公分以上"
-    ],
-    ans: ["A", "B", "D"],
-    exp: "【正確選項：A、B、D】(C) 錯誤：人行道法定埋深標準為 50 公分以上[cite: 59]。(E) 錯誤：加作適當結構補強後之法定底線為 30 公分以上[cite: 59]。"
-  },
-  {
-    q: "2. 關於監視攝影機收工關閉與交維撤離之稽核檢驗規範，下列哪些選項正確？",
-    options: [
-      "A. 攝影機架設時間需自通報開工起持續至交維及機具全部撤離後",
-      "B. 施工收工時需調轉攝影機拍攝整個工區，確認交維確實撤收後才可關閉",
-      "C. 現場施工人員於工作完成後，可自行關閉攝影機，無須照會駐點人員",
-      "D. 現場交維機具未撤離前即關閉攝影機收工者，屬於重大違規缺失",
-      "E. 現場人員收工關閉攝影機前，應電洽道管中心所屬管線駐點人員確認"
-    ],
-    ans: ["A", "B", "D", "E"],
-    exp: "【正確選項：A、B、D、E】(C) 錯誤：現場施工人員收工時，應先電洽本中心所屬管線單位駐點人員確認後，方得收工關閉攝影機[cite: 28]。"
-  },
-  {
-    q: "3. 關於管（溝）道工程自主檢查之鋼筋加固與 CLSM 澆置／靜置照片查驗標準，下列哪些選項正確？",
-    options: [
-      "A. 回填澆置 CLSM 相片中需清楚辨識澆置車車牌",
-      "B. CLSM 靜置證明需由體重 60 公斤以上人員站立 5 分鐘以上且面層無下陷",
-      "C. 現場若因叫料不及改採工地自拌砂漿回填，照片只要能辨識管溝即可列為符合",
-      "D. 測試人員體重達 50 公斤且站立滿 3 分鐘即可出具靜置證明",
-      "E. 澆置過程未拍攝管溝含背景者列為缺失記點"
-    ],
-    ans: ["A", "B", "E"],
-    exp: "【正確選項：A、B、E】(C) 錯誤：自主檢查「自拌」列為不符合規範之缺失[cite: 16]。(D) 錯誤：CLSM 靜置時間證明需由體重 60 公斤以上人員站立 5 分鐘以上且面層無下陷[cite: 52]。"
-  },
-  {
-    q: "4. 關於孔蓋提升／降埋工程與 AC 鋪面工程自主檢查之量測工具與相片規範，下列哪些選項正確？",
-    options: [
-      "A. 孔蓋工程與 AC 鋪面修復高低誤差均需使用三米尺規量測",
-      "B. 孔蓋降埋工程施工相片中，降埋深度至少需達 20 公分以上",
-      "C. AC 鋪面工程之面層 AC 厚度量測之相片需含背景能判斷現地，且厚度不得小於 5 公分",
-      "D. 孔底深度量測時，水平箱尺需平放於地面量測",
-      "E. 標線復舊相片需拍到機具且材質須使用熱拌塑膠"
-    ],
-    ans: ["A", "B", "C", "E"],
-    exp: "【正確選項：A、B、C、E】(D) 錯誤：孔底深度量測時，水平箱尺需「直立」，從孔底垂直起算至路面[cite: 66]。"
-  },
-  {
-    q: "5. 關於管溝臨時修復路面平整度量測之技術規範與常見缺失判定，下列哪些選項正確？",
-    options: [
-      "A. 標準量測工具為半米尺規，採用三米尺規量測屬於工具錯誤",
-      "B. 管溝長度大於 20 公尺時，每隔 20 公尺量測 1 次（左右兩側皆量）",
-      "C. 量測時尺規應放置於管溝新舊交接最深處量測",
-      "D. 量測數據（含編號）加註於地面或白板上，單位採公分（cm）為原則",
-      "E. 量測時同時擺放 2 個量尺貼緊尺規屬於合規作法"
-    ],
-    ans: ["A", "B", "C"],
-    exp: "【正確選項：A、B、C】(D) 錯誤：單位採「公厘（mm）」為原則[cite: 69]。(E) 錯誤：規定僅需 1 個量尺，放置 2 個量尺屬於常見缺失態樣[cite: 71]。"
-  },
-  {
-    q: "6. 關於定位測量（埋深量測）相片檢驗要點與工具放置規範，下列哪些選項正確？",
-    options: [
-      "A. 垂直箱尺需由人員用手扶正，不可未扶自然擺放傾斜",
-      "B. 水平箱尺與地面接觸處（共 2 處）需噴漆作記號",
-      "C. 垂直箱尺底端得放置於鋼筋層頂部量測讀數",
-      "D. 垂直箱尺與水平箱尺需貼平正交且讀數清晰可辨",
-      "E. 手寫板必須現場實拍並清楚辨識測點編號與管線埋深數值等法定資訊"
-    ],
-    ans: ["A", "B", "D", "E"],
-    exp: "【正確選項：A、B、D、E】(C) 錯誤：垂直箱尺應放置於管線最上層之頂部，不得放於鋼筋上及非最上層管頂位置[cite: 60]。"
-  },
-  {
-    q: "7. 關於道管中心駐點人員與施工現場人員記點考核機制，下列哪些選項正確？",
-    options: [
-      "A. 駐點人員考評年累積滿 10 點將通知汰換，且 2 年內不得再進駐",
-      "B. 施工現場人員每人每年度扣點累計超過 10 點者廢止證照，翌日起 1 年內不得受訓",
-      "C. 駐點人員無故遲到早退、擅離崗位或缺勤，每違規 1 次扣 1 點",
-      "D. 駐點人員未確實依作業要點所列工作項目執行，每態樣違規累計 3 次扣 1 點",
-      "E. 施工人員現場未配戴合格證件者，依規定予以扣點處分"
-    ],
-    ans: ["A", "C", "D"],
-    exp: "【正確選項：A、C、D】(B) 錯誤：證照經廢止者，自廢止翌日起「2 年內」不得再參加受訓[cite: 19]。"
-  },
-  {
-    q: "8. 關於施工逾時線上申請時限與群組逾時通報頻率，下列哪些選項正確？",
-    options: [
-      "A. 逾時線上申請應於當日核准收工時段前 30 分鐘由系統線上提出",
-      "B. 第 2 次逾時申請以第 1 次逾時核准收工時段前 30 分鐘為限",
-      "C. 交通敏感路段於尖峰時段（06:30~09:00、17:00~19:00）禁止辦理逾時申請",
-      "D. 非敏感路段逾時未申請，於應收工時間後每隔 2 小時通報大群 1 次",
-      "E. 敏感路段預計逾時施工，需於應收工 2 小時前通報，應收工後每隔半小時通報 1 次"
-    ],
-    ans: ["A", "B", "C", "E"],
-    exp: "【正確選項：A、B、C、E】(D) 錯誤：非敏感路段案件逾時未申請，需於應收工時間後「每小時」通報一次[cite: 13]。"
-  },
-  {
-    q: "9. 關於開工通報與管溝收工通報照片查驗規範，下列哪些選項正確？",
-    options: [
-      "A. 開工挖掘前遠景相片需含標誌標線及整個街景，施工機具不得佔用",
-      "B. 施工告示牌相片需清晰可辨並張貼路證及交維圖說",
-      "C. 管溝收工修復完成前景面對車行逆向拍照、後景面對車行順向拍照",
-      "D. 預計銑鋪日期字樣需依規定格式字模噴塗，內容包含單位簡稱與預計日期",
-      "E. 現場交維機具全部撤離且地面清掃乾淨後，方得拍攝收工通報相片"
-    ],
-    ans: ["A", "B", "D", "E"],
-    exp: "【正確選項：A、B、D、E】(C) 錯誤：修復完成「前景」為面對車行順向拍照，「後景」為面對車行逆向拍照[cite: 46]。"
-  },
-  {
-    q: "10. 關於管線遭挖損破管與突發事件應變通報處置流程，下列哪些選項正確？",
-    options: [
-      "A. 挖損瓦斯或自來水大管時，施工單位應先於大群通報被挖損單位及監控組",
-      "B. 被挖損單位到達前，由施工單位持續定時通報現場處理情形",
-      "C. 被挖損單位進場接手修復後，改由被挖損單位接續定時回報進度至修復完妥",
-      "D. 挖損案件未確實依規定通報或回報流程未落實者，將予以人員記點",
-      "E. 遇管線挖損事故，施工單位僅需私訊被挖損單位，免通報大群組"
-    ],
-    ans: ["A", "B", "C", "D"],
-    exp: "【正確選項：A、B、C、D】(E) 錯誤：必須先於大群通報被挖損單位及監控組並附上挖損照片，持續追蹤回報至修復完妥[cite: 25]。"
-  }
-];
+// ==========================================
+// Google Apps Script API 網址 (請填入您的 URL)
+// ==========================================
+const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby8-IPuXyqZ3-N0Cmjssc7PaqVIVGQzMBFvOfQIlIXSgNwS50xvyPMn-3VSoKyYJsP6/exec";
 
-const saData = [
-  {
-    q: "11. 請說明辦理定位測量管溝銜接孔蓋時，「系統定位點起點」與「照片上傳量測起訖點」在孔蓋位置上的不同規定分別為何？",
-    ref: "系統定位測量需以「孔蓋中心處」訂為起點；照片上傳則以「孔蓋前端」作為管線量測之起點及終點[cite: 61]。",
-    criteria: [
-      { desc: "系統起點：孔蓋中心處 (2.5分)", weight: 2.5, words: ["中心處", "孔蓋中心", "中心點", "中心位置", "圓心", "正中心", "中間處", "中心"] },
-      { desc: "照片起訖：孔蓋前端 (2.5分)", weight: 2.5, words: ["孔蓋前端", "前端", "前緣", "前方邊緣", "孔蓋前緣", "外緣前端", "前側"] }
-    ]
-  },
-  {
-    q: "12. 依據定位測量作業規範，垂直箱尺放置於管線上進行埋深讀數時，有何明確的「放置位置」與「嚴禁放置位置」之規定？",
-    ref: "垂直箱尺需放置於「管線最上層之頂部」（管頂）；嚴禁放置於「鋼筋上」及「非最上層管頂」之位置[cite: 60]。",
-    criteria: [
-      { desc: "放置於：管線最上層頂部/管頂 (2.5分)", weight: 2.5, words: ["最上層之頂部", "最上層頂部", "最上層管頂", "管頂", "管線頂部", "管線最上層", "管上方", "管子頂部", "最上層"] },
-      { desc: "嚴禁放於：鋼筋上/非最上層管頂 (2.5分)", weight: 2.5, words: ["鋼筋", "鋼筋上", "鋼筋層", "非最上層", "不是最上層", "不可放鋼筋", "不得放於鋼筋"] }
-    ]
-  },
-  {
-    q: "13. 請寫出管溝臨時修復路面平整度量測時，在「工具規格」、「量測深淺位置」及「數據單位」上的三項核心規定。",
-    ref: "(1) 工具：使用「半米尺規」[cite: 67]。 (2) 位置：量尺放於新舊交接「最深處」[cite: 68, 69]。 (3) 單位：數據單位採「公厘（mm）」為原則[cite: 69]。",
-    criteria: [
-      { desc: "工具：半米尺規 (2.0分)", weight: 2.0, words: ["半米尺規", "半米尺", "0.5m尺規", "0.5公尺尺規", "50cm尺規", "50公分尺規", "半公尺尺規", "半米"] },
-      { desc: "位置：新舊交接最深處 (1.5分)", weight: 1.5, words: ["最深處", "新舊最深處", "交接最深處", "高低差最大", "新舊交接處", "交接處", "落差最大", "最深"] },
-      { desc: "單位：公厘 / mm (1.5分)", weight: 1.5, words: ["mm", "公厘", "毫米", "公釐"] }
-    ]
-  },
-  {
-    q: "14. 孔蓋提升／降埋工程辦理「孔蓋降埋」及「孔底深度量測」時，施工相片中降埋深度之最小標準為何？水平箱尺量測時之擺放姿勢與起算點為何？",
-    ref: "降埋深度至少需達「20 公分（20cm）以上」[cite: 66]；孔底深度量測時「水平箱尺需直立」，並「從孔底垂直起算至路面」[cite: 66]。",
-    criteria: [
-      { desc: "降埋深度：20公分以上 (2.0分)", weight: 2.0, words: ["20公分", "20cm", "0.2m", "0.2公尺", "二十公分", "200mm", "20"] },
-      { desc: "箱尺姿勢：直立/垂直 (1.5分)", weight: 1.5, words: ["直立", "垂直", "立直", "豎立", "垂直放置", "直放"] },
-      { desc: "起算點：從孔底起算至路面 (1.5分)", weight: 1.5, words: ["孔底", "從孔底", "自孔底", "孔底起算", "孔底至路面", "底部"] }
-    ]
-  },
-  {
-    q: "15. 自主檢查中，管溝（道）工程之「管溝 AC 厚度」與 AC 鋪面工程之「面層 AC 厚度」，其法定最小量測厚度分別為多少？",
-    ref: "管溝 AC 厚度不得小於「20 公分（20cm / 0.2m）」[cite: 16, 52]；面層 AC 厚度不得小於「5 公分（5cm）」[cite: 57]。",
-    criteria: [
-      { desc: "管溝AC厚度：20公分 / 0.2m (2.5分)", weight: 2.5, words: ["20公分", "20cm", "0.2m", "0.2公尺", "二十公分", "20"] },
-      { desc: "面層AC厚度：5公分 / 5cm (2.5分)", weight: 2.5, words: ["5公分", "5cm", "0.05m", "五公分", "5"] }
-    ]
-  },
-  {
-    q: "16. 請寫出管溝工程自主檢查中，CLSM 靜置時間證明現場查驗的三項嚴格判定條件（受測人員體重、站立時間、面層狀態）。",
-    ref: "體重「60 公斤以上」人員，於管溝回填處連續站立「5 分鐘以上」，且面層維持「無下陷（未下陷／沒下陷）」情形[cite: 52]。",
-    criteria: [
-      { desc: "人員體重：60公斤以上 (2.0分)", weight: 2.0, words: ["60公斤", "60kg", "六十公斤", "60"] },
-      { desc: "站立時間：5分鐘以上 (1.5分)", weight: 1.5, words: ["5分鐘", "5min", "五分鐘", "5分", "五分"] },
-      { desc: "面層狀態：無下陷/未下陷/沒下陷 (1.5分)", weight: 1.5, words: ["無下陷", "未下陷", "沒下陷", "沒有下陷", "不下陷", "無沉陷", "未沉陷", "沒沉陷", "無塌陷", "未塌陷", "不塌陷", "無凹陷", "未凹陷", "沒凹陷", "不凹陷", "無變形", "未變形"] }
-    ]
-  },
-  {
-    q: "17. 監控組於每日監看監視攝影機時，列入記點處分的「未拍攝施工過程持續時限」及「提醒改善未改善時限」分別為幾分鐘？",
-    ref: "未拍攝管溝、孔蓋或刨鋪施工過程持續「30 分鐘以上」[cite: 26]；經監控組提醒改善未於「30 分鐘內」完成改善者[cite: 26]。",
-    criteria: [
-      { desc: "未拍攝施工過程與未改善時限：皆為 30 分鐘 (5.0分)", weight: 5.0, words: ["30分鐘", "30min", "三十分鐘", "半小時", "30分", "30"] }
-    ]
-  },
-  {
-    q: "18. 施工單位遭遇自來水大管或瓦斯管線遭挖損破管事故時，在「被挖損單位到達前」與「被挖損單位進場接手後」，大群定時回報責任分別由誰承擔？",
-    ref: "被挖損單位到達修復前，由「施工單位」持續定時通報[cite: 25]；進場接手修復後，改由「被挖損單位」接續定時回報修復進度至修復完妥[cite: 25]。",
-    criteria: [
-      { desc: "抵達前：施工單位/申挖廠商 (2.5分)", weight: 2.5, words: ["施工單位", "原施工單位", "申挖單位", "申挖廠商", "施工廠商", "挖損單位", "承包商", "施工方"] },
-      { desc: "接手後：被挖損單位/管線單位 (2.5分)", weight: 2.5, words: ["被挖損單位", "受損單位", "遭挖損單位", "被損單位", "管線單位", "所屬管線單位", "搶修單位", "管線機構", "被挖損方"] }
-    ]
-  },
-  {
-    q: "19. 施工逾時線上申請機制中，「第 1 次逾時申請」與「第 2 次逾時申請」之系統截止時間點分別為何？",
-    ref: "第 1 次應於「當日核准收工時段前 30 分鐘」提出[cite: 18]；第 2 次以「第 1 次逾時核准收工時段前 30 分鐘」為限[cite: 18]。",
-    criteria: [
-      { desc: "第1次：當日核准收工前 30 分鐘 (2.5分)", weight: 2.5, words: ["收工時段前30", "收工前30", "收工前半小時", "前30分鐘", "前30分", "前半小時", "30分鐘前", "30分前"] },
-      { desc: "第2次：第1次逾時核准收工前 30 分鐘 (2.5分)", weight: 2.5, words: ["第1次逾時", "第一次逾時", "第1次核准", "第一次核准", "前次逾時", "前一次逾時", "前次核准"] }
-    ]
-  },
-  {
-    q: "20. 配合國土署規定，定位測量手寫板（白板）中必須清楚填寫並辨識的 6 項法定工程與測量資訊為何？",
-    ref: "施工日期、工程名稱、案號、工程地點、測點編號、管線埋深（孔底深度）數值[cite: 23]。",
-    criteria: [
-      { desc: "施工日期 (0.8分)", weight: 0.8, words: ["施工日期", "日期", "施作日期", "測量日期"] },
-      { desc: "工程名稱 (0.8分)", weight: 0.8, words: ["工程名稱", "名稱", "案名", "工程名"] },
-      { desc: "案號 (0.8分)", weight: 0.8, words: ["案號", "路證號", "案件編號", "許可證號", "證號"] },
-      { desc: "工程地點 (0.8分)", weight: 0.8, words: ["工程地點", "施工地點", "地點", "位置", "地址", "路段"] },
-      { desc: "測點編號 (0.9分)", weight: 0.9, words: ["測點編號", "點位編號", "編號", "測點", "點號"] },
-      { desc: "管線埋深/孔底深度 (0.9分)", weight: 0.9, words: ["管線埋深", "埋設深度", "埋深", "孔底深度", "深度", "管深"] }
-    ]
-  }
-];
+let cases = []; 
 
-let unlockedIndex = 0;
-const totalQuestions = mcqData.length + saData.length;
-let timerSeconds = 20 * 60; // 改為 20 分鐘
-let timerInterval = null;
-let examStarted = false;
+// 初始化
+window.onload = () => {
+  const now = new Date();
+  document.getElementById("e_time1").value = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+  document.getElementById("newCaseId").value = "351908"; 
+  addCase();
+};
 
-function startExam() {
-  document.getElementById("startModal").style.display = "none";
-  document.getElementById("examBody").style.display = "block";
-  examStarted = true;
-  renderQuiz();
-  startTimer();
+// 增加案件
+function addCase() {
+  const caseId = document.getElementById("newCaseId").value.trim();
+  if(!caseId) return;
+  cases.unshift({ id: caseId, timer: null, timeLeft: 0, status: '正常監控中', lastLog: '無' });
+  document.getElementById("newCaseId").value = "";
+  renderDashboard();
 }
 
-function startTimer() {
-  clearInterval(timerInterval);
-  timerInterval = setInterval(() => {
-    timerSeconds--;
-    if (timerSeconds <= 0) {
-      clearInterval(timerInterval);
-      alert("作答時間已到，系統將自動交卷！");
-      submitQuiz();
-      return;
-    }
-    const mins = String(Math.floor(timerSeconds / 60)).padStart(2, "0");
-    const secs = String(timerSeconds % 60).padStart(2, "0");
-    document.getElementById("timerText").innerText = `${mins}:${secs}`;
-  }, 1000);
-}
+// 渲染戰情面板
+function renderDashboard() {
+  const dashboard = document.getElementById("dashboard");
+  dashboard.innerHTML = cases.map((c, index) => {
+    
+    let statusClass = "status-success";
+    let textClass = "";
+    if (c.status.includes('無') || c.status.includes('未')) { statusClass = "status-danger"; textClass = "alert"; }
+    else if (c.status.includes('逾時未申請') || c.status.includes('待命')) { statusClass = "status-warning"; textClass = "alert"; }
 
-function renderQuiz() {
-  const mcqBox = document.getElementById("mcqContainer");
-  mcqBox.innerHTML = mcqData.map((item, idx) => `
-    <div class="q-card ${idx === 0 ? 'unlocked active-card' : ''}" id="q-card-${idx}">
-      <div class="q-header">
-        <div class="q-title"><span class="q-type-badge">複選題</span>${item.q}</div>
-        <div class="q-score-tag" id="score-tag-${idx}">配分：5 分</div>
-      </div>
-      <div class="options-list">
-        ${item.options.map((opt, oIdx) => {
-          const val = ["A", "B", "C", "D", "E"][oIdx];
-          return `
-            <label class="option-label" id="label-${idx}-${val}">
-              <input type="checkbox" name="mcq-${idx}" value="${val}">
-              <span>${opt}</span>
-            </label>
-          `;
-        }).join("")}
-      </div>
-      <div class="card-actions" id="actions-${idx}">
-        <span class="error-msg" id="err-${idx}">請至少勾選一個選項後再解鎖下一題！</span>
-        <button type="button" class="btn-next" id="btn-next-${idx}" onclick="unlockNext(${idx})">
-          確認本題作答，解鎖下一題 ▼
-        </button>
-      </div>
-      <div class="feedback-box" id="fb-${idx}"></div>
-    </div>
-  `).join("");
-
-  const saBox = document.getElementById("saContainer");
-  saBox.innerHTML = saData.map((item, sIdx) => {
-    const globalIdx = mcqData.length + sIdx;
     return `
-      <div class="q-card" id="q-card-${globalIdx}">
-        <div class="q-header">
-          <div class="q-title"><span class="q-type-badge" style="background:#0f766e;">簡答題</span>${item.q}</div>
-          <div class="q-score-tag" id="score-tag-${globalIdx}">配分：5 分</div>
+      <div class="case-card ${statusClass}" id="card-${index}">
+        <div class="card-indicator"></div>
+        <div class="case-header">
+          <span class="case-id"># ${c.id}</span>
+          <span class="case-remove" onclick="removeCase(${index})">✕ 移除</span>
         </div>
-        <textarea id="sa-input-${sIdx}" placeholder="請在此輸入您的答案..."></textarea>
-        <div class="sa-hint">提示：直接寫出重點關鍵字或數據即可。</div>
-        <div class="card-actions" id="actions-${globalIdx}">
-          <span class="error-msg" id="err-${globalIdx}">請填寫答案內容後再解鎖下一題！</span>
-          <button type="button" class="btn-next" id="btn-next-${globalIdx}" onclick="unlockNext(${globalIdx})">
-            ${globalIdx < totalQuestions - 1 ? '確認本題作答，解鎖下一題 ▼' : '完成最後一題作答 ✓'}
+        <div class="status-text ${textClass}">⚡ ${c.status} <br><span style="font-size:0.8rem; font-weight:normal; color:var(--text-sub);">上次紀錄: ${c.lastLog}</span></div>
+        
+        <div class="action-grid">
+          <button class="btn-action red" onclick="setTimer(${index}, '無畫面或遮擋', 15)">📷 無畫面(15m)</button>
+          <button class="btn-action red" onclick="setTimer(${index}, '未拍管溝/澆置', 30)">🚧 漏拍關鍵(30m)</button>
+          <button class="btn-action yellow" onclick="setTimer(${index}, '逾時未申請', 0)">⏰ 逾時未申</button>
+          <button class="btn-action yellow" onclick="setTimer(${index}, '管障待命協調', 0)">⚠️ 管障待命</button>
+        </div>
+
+        <div class="timer-display" id="timer-${index}">15:00</div>
+        
+        <div class="bottom-actions">
+          <div class="report-group">
+            <button class="btn-report" onclick="openModal('overtimeModal', ${index})">📝 逾時通報</button>
+            <button class="btn-emergency" onclick="openModal('emergencyModal', ${index})">🚨 緊急挖損</button>
+          </div>
+          <button class="btn-log" onclick="logData(${index})">
+            <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+            同步紀錄至雲端報表
           </button>
+          <button class="btn-action green" style="width:100%; border-color:var(--success); color:var(--success);" onclick="setTimer(${index}, '正常收工', 0)">✅ 確認正常收工撤場</button>
         </div>
-        <div class="feedback-box" id="fb-${globalIdx}"></div>
       </div>
     `;
   }).join("");
-
-  updateProgress(1);
 }
 
-function unlockNext(currentIdx) {
-  const errEl = document.getElementById(`err-${currentIdx}`);
-
-  if (currentIdx < mcqData.length) {
-    const checked = document.querySelectorAll(`input[name="mcq-${currentIdx}"]:checked`);
-    if (checked.length === 0) {
-      errEl.style.display = "inline";
-      return;
-    }
-  } else {
-    const sIdx = currentIdx - mcqData.length;
-    const val = document.getElementById(`sa-input-${sIdx}`).value.trim();
-    if (val.length === 0) {
-      errEl.style.display = "inline";
-      return;
-    }
-  }
-  errEl.style.display = "none";
-
-  const currentCard = document.getElementById(`q-card-${currentIdx}`);
-  currentCard.classList.remove("active-card");
-  const btn = document.getElementById(`btn-next-${currentIdx}`);
-  btn.innerText = "已確認作答 ✓";
-  btn.classList.add("completed");
-
-  const nextIdx = currentIdx + 1;
-  if (nextIdx < totalQuestions) {
-    if (nextIdx === mcqData.length) {
-      document.getElementById("secBanner2").classList.add("visible");
-    }
-    const nextCard = document.getElementById(`q-card-${nextIdx}`);
-    nextCard.classList.add("unlocked", "active-card");
-
-    if (nextIdx > unlockedIndex) {
-      unlockedIndex = nextIdx;
-      updateProgress(unlockedIndex + 1);
-    }
-
-    setTimeout(() => {
-      nextCard.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 80);
-  } else {
-    updateProgress(totalQuestions);
-    const submitZone = document.getElementById("submitZone");
-    submitZone.style.display = "block";
-    setTimeout(() => {
-      submitZone.scrollIntoView({ behavior: "smooth", block: "center" });
-    }, 80);
-  }
-}
-
-function updateProgress(step) {
-  document.getElementById("progressText").innerText = `${step} / ${totalQuestions}`;
-  const pct = Math.min(100, Math.round((step / totalQuestions) * 100));
-  document.getElementById("progressBar").style.width = `${pct}%`;
-}
-
-function normalizeText(str) {
-  return str
-    .replace(/[\uff01-\uff5e]/g, ch => String.fromCharCode(ch.charCodeAt(0) - 0xfee0))
-    .toLowerCase()
-    .replace(/\s+/g, "")
-    .replace(/[，。、；：！？「」『』（）()~～\-—_]/g, "");
-}
-
-function submitQuiz() {
-  clearInterval(timerInterval);
-  let mcqTotal = 0;
-  let saTotal = 0;
-
-  document.getElementById("secBanner2").classList.add("visible");
-  for (let i = 0; i < totalQuestions; i++) {
-    const c = document.getElementById(`q-card-${i}`);
-    c.classList.add("unlocked");
-    c.classList.remove("active-card");
-    const act = document.getElementById(`actions-${i}`);
-    if (act) act.style.display = "none";
-  }
-
-  mcqData.forEach((item, idx) => {
-    const checked = Array.from(document.querySelectorAll(`input[name="mcq-${idx}"]:checked`)).map(e => e.value);
-    const card = document.getElementById(`q-card-${idx}`);
-    const fb = document.getElementById(`fb-${idx}`);
-    const scoreTag = document.getElementById(`score-tag-${idx}`);
-
-    const isCorrect = checked.length === item.ans.length && checked.every(v => item.ans.includes(v));
-
-    if (isCorrect) {
-      mcqTotal += 5;
-      card.style.borderColor = "var(--success)";
-      scoreTag.innerText = "得分：5 / 5 分";
-      scoreTag.style.background = "var(--success-bg)";
-      scoreTag.style.color = "var(--success)";
-      fb.className = "feedback-box correct";
-      fb.innerHTML = `<strong>【作答正確 (+5分)】</strong><br>${item.exp}`;
-    } else {
-      card.style.borderColor = "var(--error)";
-      scoreTag.innerText = "得分：0 / 5 分";
-      scoreTag.style.background = "var(--error-bg)";
-      scoreTag.style.color = "var(--error)";
-      fb.className = "feedback-box wrong";
-      fb.innerHTML = `<strong>【作答有誤 (+0分)】</strong> 您的作答：${checked.length ? checked.join("、") : "未作答"} ｜ 正確答案：<strong>${item.ans.join("、")}</strong><br>${item.exp}`;
-    }
-    fb.style.display = "block";
-
-    ["A", "B", "C", "D", "E"].forEach(val => {
-      const lbl = document.getElementById(`label-${idx}-${val}`);
-      if (item.ans.includes(val)) {
-        lbl.style.borderColor = "var(--success)";
-        lbl.style.background = "var(--success-bg)";
-        lbl.style.fontWeight = "700";
-      } else if (checked.includes(val)) {
-        lbl.style.borderColor = "var(--error)";
-        lbl.style.background = "var(--error-bg)";
+// 設定計時器與狀態
+function setTimer(index, statusText, minutes) {
+  const c = cases[index];
+  c.status = statusText;
+  
+  if (minutes > 0) {
+    if(c.timer) clearInterval(c.timer);
+    c.timeLeft = minutes * 60;
+    renderDashboard();
+    document.getElementById(`timer-${index}`).style.display = "block";
+    
+    c.timer = setInterval(() => {
+      c.timeLeft--;
+      let m = Math.floor(c.timeLeft / 60);
+      let s = c.timeLeft % 60;
+      const el = document.getElementById(`timer-${index}`);
+      if(el) el.innerText = `${m}:${s < 10 ? '0':''}${s}`;
+      
+      if(c.timeLeft <= 0) {
+        clearInterval(c.timer);
+        if(el) { el.innerText = "⚠️ 逾時!"; el.style.color = "white"; el.style.background = "var(--danger)"; }
+        alert(`【系統警告】案號 ${c.id} 的「${statusText}」已超過時限！請立即處置。`);
       }
-    });
-  });
-
-  saData.forEach((item, sIdx) => {
-    const globalIdx = mcqData.length + sIdx;
-    const rawInput = document.getElementById(`sa-input-${sIdx}`).value;
-    const normInput = normalizeText(rawInput);
-    const card = document.getElementById(`q-card-${globalIdx}`);
-    const fb = document.getElementById(`fb-${globalIdx}`);
-    const scoreTag = document.getElementById(`score-tag-${globalIdx}`);
-
-    let qScore = 0;
-    let kwTagsHtml = [];
-
-    item.criteria.forEach(crit => {
-      const isMatched = crit.words.some(w => normInput.includes(normalizeText(w)));
-      if (isMatched) {
-        qScore += crit.weight;
-        kwTagsHtml.push(`<span class="kw-tag kw-matched">✓ 命中採分點：${crit.desc}</span>`);
-      } else {
-        kwTagsHtml.push(`<span class="kw-tag kw-missed">✗ 漏答採分點：${crit.desc}</span>`);
-      }
-    });
-
-    qScore = Math.min(5, Math.round(qScore * 10) / 10);
-    saTotal += qScore;
-
-    scoreTag.innerText = `得分：${qScore} / 5 分`;
-
-    if (qScore === 5) {
-      card.style.borderColor = "var(--success)";
-      scoreTag.style.background = "var(--success-bg)";
-      scoreTag.style.color = "var(--success)";
-      fb.className = "feedback-box correct";
-    } else if (qScore > 0) {
-      card.style.borderColor = "var(--gov-gold)";
-      scoreTag.style.background = "var(--warning-bg)";
-      scoreTag.style.color = "var(--warning)";
-      fb.className = "feedback-box partial";
-    } else {
-      card.style.borderColor = "var(--error)";
-      scoreTag.style.background = "var(--error-bg)";
-      scoreTag.style.color = "var(--error)";
-      fb.className = "feedback-box wrong";
-    }
-
-    fb.innerHTML = `
-      <div><strong>系統關鍵字權重批改得分：${qScore} / 5 分</strong></div>
-      <div class="keyword-list">${kwTagsHtml.join("")}</div>
-      <div class="ref-box"><strong>官方標準答案：</strong>${item.ref}</div>
-    `;
-    fb.style.display = "block";
-  });
-
-  const totalScore = Math.round((mcqTotal + saTotal) * 10) / 10;
-  const banner = document.getElementById("scoreBanner");
-  const statusBadge = document.getElementById("statusBadge");
-  const scoreText = document.getElementById("scoreText");
-  const feedback = document.getElementById("scoreFeedback");
-
-  banner.style.display = "block";
-  scoreText.innerText = totalScore;
-
-  if (totalScore >= 80) {
-    statusBadge.innerHTML = `<span class="pass-badge">✓ 測驗合格（通過 80 分第一階段進駐門檻）</span>`;
+    }, 1000);
   } else {
-    statusBadge.innerHTML = `<span class="fail-badge">✗ 測驗未合格（未達 80 分進駐標準，請安排補考）</span>`;
+    if(c.timer) clearInterval(c.timer);
+    renderDashboard();
+  }
+}
+
+// 寫入 Google Sheets
+function logData(index) {
+  const c = cases[index];
+  const now = new Date();
+  const timeStr = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+  c.lastLog = timeStr;
+  renderDashboard();
+
+  fetch(GOOGLE_SCRIPT_URL, {
+    method: 'POST', mode: 'no-cors',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ time: timeStr, caseId: c.id, status: c.status, remark: "戰情室快速登錄" })
+  }).then(() => alert(`✅ 案號 ${c.id} 狀態已同步雲端！`));
+}
+
+function removeCase(index) {
+  if (confirm("確定移除此案號？")) {
+    if(cases[index].timer) clearInterval(cases[index].timer);
+    cases.splice(index, 1);
+    renderDashboard();
+  }
+}
+
+// ================= Modal 控制 =================
+function openModal(modalId, index = null) {
+  if(index !== null) {
+    if(modalId === 'overtimeModal') document.getElementById("o_caseId").value = cases[index].id;
+    if(modalId === 'emergencyModal') document.getElementById("e_caseId").value = cases[index].id;
+  }
+  document.getElementById(modalId).style.display = "flex";
+}
+function closeModal(modalId) { document.getElementById(modalId).style.display = "none"; }
+
+// ================= 通報生成器 =================
+function generateOvertime() {
+  const caseId = document.getElementById("o_caseId").value;
+  const times = document.getElementById("o_times").value;
+  const endTime = document.getElementById("o_endTime").value;
+  
+  const now = new Date();
+  let hrs = 0, mins = 0;
+  if (endTime) {
+    const end = new Date();
+    end.setHours(endTime.split(":")[0], endTime.split(":")[1], 0, 0);
+    const diff = now - end;
+    if (diff > 0) { hrs = Math.floor(diff/3600000); mins = Math.floor((diff%3600000)/60000); }
   }
 
-  feedback.innerHTML = `第一部分（複選題）得分：<strong>${mcqTotal}</strong> / 50 分 ｜ 第二部分（簡答題）得分：<strong>${Math.round(saTotal * 10) / 10}</strong> / 50 分`;
-  const subZone = document.getElementById("submitZone");
-  if (subZone) subZone.style.display = "none";
+  let suffix = times === "3" ? "第3次(已收工)通報" : `第${times}次通報`;
+  let text = `【道管中心-通報】\n${now.getMonth()+1}/${now.getDate()}日間「已申請逾時待核准仍在施工中案」${suffix}：\n一、案號：${caseId}\n二、施工單位：${document.getElementById('o_company').value}\n三、路權單位：${document.getElementById('o_authority').value}\n四、施工路段：${document.getElementById('o_road').value}\n五、佔用情形：${document.getElementById('o_occupation').value}\n六、已逾時:${hrs}小時${mins}分鐘(應收工${endTime}，已申請逾時待核准)\n以上通報各路權單位知悉!`;
 
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  navigator.clipboard.writeText(text).then(() => { alert("✅ 逾時通報文已複製！"); closeModal('overtimeModal'); });
+}
+
+function generateEmergency() {
+  const caseId = document.getElementById("e_caseId").value;
+  const now = new Date();
+  
+  let text = `【道管中心-緊急通報】\n一、事件：案號 ${caseId} (${document.getElementById('e_event').value})\n二、接獲時間：${now.getFullYear()-1911}年${now.getMonth()+1}月${now.getDate()}日 ${document.getElementById('e_time1').value}\n三、抵達時間：${document.getElementById('e_time2').value}\n四、處理情形：${document.getElementById('e_action').value}\n五、管線形式：${document.getElementById('e_type').value}\n六、影響範圍：${document.getElementById('e_impact').value}\n七、現場負責人：${document.getElementById('e_pic').value}\nPS: 請隨時回報最新情形並上傳照片`;
+
+  navigator.clipboard.writeText(text).then(() => { alert("🚨 緊急通報文已複製！"); closeModal('emergencyModal'); });
+}
+
+// ================= 計算機邏輯 =================
+function checkAC() {
+  const ac1 = parseFloat(document.getElementById('c_ac1').value) || 0;
+  const ac2 = parseFloat(document.getElementById('c_ac2').value) || 0;
+  const res = document.getElementById('acResult');
+  
+  if(ac1===0 && ac2===0) { res.style.display = 'none'; return; }
+  res.style.display = 'block';
+  
+  let msg = [];
+  if(ac1 > 0) msg.push(`管溝AC: ${ac1 >= 20 ? '✅ 合格' : '❌ 不合格 (需≥20)'}`);
+  if(ac2 > 0) msg.push(`面層AC: ${ac2 >= 5 ? '✅ 合格' : '❌ 不合格 (需≥5)'}`);
+  
+  res.innerHTML = msg.join("<br>");
+  res.className = (ac1 > 0 && ac1 < 20) || (ac2 > 0 && ac2 < 5) ? 'calc-result fail' : 'calc-result';
+}
+
+function checkPoints() {
+  const len = parseFloat(document.getElementById('c_len').value) || 0;
+  const res = document.getElementById('lenResult');
+  if(len <= 0) { res.style.display = 'none'; return; }
+  
+  res.style.display = 'block';
+  if(len <= 20) {
+    res.innerHTML = "✅ 管溝 ≤ 20m<br>需量測 3 點：<b>起點、中心處、終點</b>";
+    res.className = 'calc-result';
+  } else {
+    let extra = Math.floor(len / 20);
+    res.innerHTML = `⚠️ 管溝 > 20m<br>除起訖點外，需每 20m 量測 1 次。<br>約需量測 <b>${extra + 2}</b> 個點位。`;
+    res.className = 'calc-result fail';
+  }
 }
 </script>
 </body>
