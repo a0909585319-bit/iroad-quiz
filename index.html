@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>iROAD 外包戰情監控終端 (含 39 欄官方 Excel 匯出引擎)</title>
-  <!-- 引入 SheetJS 瀏覽器端 Excel 生成引擎 -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <title>iROAD 輔助系統</title>
+  <!-- 引入支援完整儲存格合併、框線與紅字顏色的 ExcelJS 與 FileSaver 引擎 -->
+  <script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/file-saver@2.0.5/dist/FileSaver.min.js"></script>
   <style>
     :root {
       --bg-dark: #0f172a; --bg-card: #1e293b; --bg-modal: #0f172ae6;
@@ -18,19 +19,9 @@
     }
 
     * { box-sizing: border-box; }
-    body { font-family: "Microsoft JhengHei", "Courier New", monospace; background: var(--bg-dark); color: var(--text-main); margin: 0; line-height: 1.6; }
-    
-    /* 門禁畫面 */
-    #lockScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-dark); display: flex; justify-content: center; align-items: center; z-index: 9999; flex-direction: column; }
-    .lock-box { background: var(--bg-card); padding: 40px; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; max-width: 400px; width: 90%; }
-    .lock-box h2 { color: var(--accent); margin-top: 0; margin-bottom: 20px; letter-spacing: 2px; }
-    .lock-box input { width: 100%; padding: 15px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); color: white; border-radius: 8px; font-size: 1.2rem; text-align: center; margin-bottom: 20px; letter-spacing: 3px; }
-    .lock-box input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 10px rgba(56,189,248,0.2); }
-    .btn-unlock { width: 100%; background: var(--accent); color: var(--bg-dark); border: none; padding: 15px; border-radius: 8px; font-weight: bold; font-size: 1.1rem; cursor: pointer; transition: 0.2s; }
-    .btn-unlock:hover { background: var(--accent-hover); }
+    body { font-family: "Microsoft JhengHei", "Courier New", monospace; background: var(--bg-dark); color: var(--text-main); margin: 0; padding: 20px; line-height: 1.6; }
 
-    /* 主系統 */
-    #mainSystem { display: none; padding: 20px; }
+    /* 頂部導覽列 */
     .top-bar { display: flex; justify-content: space-between; align-items: center; background: var(--bg-card); padding: 15px 25px; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 4px 15px rgba(0,0,0,0.3); margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
     .logo { font-size: 1.6rem; font-weight: bold; color: var(--accent); display: flex; align-items: center; gap: 10px; letter-spacing: 1px; }
     .sys-tools { display: flex; gap: 10px; flex-wrap: wrap; }
@@ -39,6 +30,7 @@
     .btn-excel { background: #059669; border-color: #10b981; color: white; }
     .btn-excel:hover { background: #047857; color: white; }
 
+    /* 案件輸入區 */
     .input-zone { display: flex; gap: 15px; max-width: 600px; margin-bottom: 25px; }
     .input-zone input { flex: 1; padding: 12px 15px; border: 1px solid var(--border); background: var(--bg-card); color: white; border-radius: 8px; font-size: 1.1rem; outline: none; }
     .input-zone input:focus { border-color: var(--accent); box-shadow: 0 0 10px rgba(56, 189, 248, 0.2); }
@@ -124,41 +116,29 @@
 </head>
 <body>
 
-  <!-- 門禁驗證 -->
-  <div id="lockScreen">
-    <div class="lock-box">
-      <h2>🔒 系統安全驗證</h2>
-      <p style="color: var(--text-sub); margin-bottom: 25px; font-size: 0.95rem;">請輸入授權代碼以進入 iROAD 監控終端</p>
-      <input type="password" id="authCode" placeholder="Enter Access Code" onkeypress="handleEnter(event)">
-      <button class="btn-unlock" onclick="verifyCode()">進入系統</button>
+  <!-- 頂部導覽列 -->
+  <div class="top-bar">
+    <div class="logo">📡 iROAD 輔助系統</div>
+    <div class="sys-tools">
+      <button class="btn-tool btn-excel" onclick="exportToOfficialExcel()">📊 匯出打卡日報表 (.xlsx)</button>
+      <button class="btn-tool" onclick="openModal('ruleModal')">📋 審查</button>
+      <button class="btn-tool" onclick="openModal('calcModal')">🧮 計算機</button>
+      <button class="btn-tool" onclick="openModal('scriptModal')">📞 通話</button>
     </div>
   </div>
 
-  <!-- 主系統 -->
-  <div id="mainSystem">
-    <div class="top-bar">
-      <div class="logo">📡 iROAD 外包戰情監控終端</div>
-      <div class="sys-tools">
-        <button class="btn-tool btn-excel" onclick="exportToExcel()">📊 一鍵匯出打卡日報表 (.xlsx)</button>
-        <button class="btn-tool" onclick="openModal('ruleModal')">📋 照片審查速查</button>
-        <button class="btn-tool" onclick="openModal('calcModal')">🧮 查驗計算機</button>
-        <button class="btn-tool" onclick="openModal('scriptModal')">📞 通話小抄</button>
-      </div>
-    </div>
-
-    <!-- 新增案號 -->
-    <div class="input-zone">
-      <input type="text" id="newCaseId" placeholder="輸入監控案號 (例: 348769)">
-      <button class="btn-add" onclick="addCase()">➕ 新增監控</button>
-    </div>
-
-    <!-- 戰情面板網格 -->
-    <div class="grid" id="dashboard"></div>
+  <!-- 新增案號 -->
+  <div class="input-zone">
+    <input type="text" id="newCaseId" placeholder="輸入案號 (例: 348769)">
+    <button class="btn-add" onclick="addCase()">➕ 新增監控</button>
   </div>
+
+  <!-- 戰情面板網格 -->
+  <div class="grid" id="dashboard"></div>
 
   <!-- ================= 彈出視窗群 ================= -->
 
-  <!-- 案件詳細編輯 Modal (自訂匯出到 Excel 的基本欄位) -->
+  <!-- 案件詳細編輯 Modal -->
   <div class="modal-overlay" id="editCaseModal">
     <div class="modal-content">
       <div class="modal-header">
@@ -166,12 +146,12 @@
         <button class="close-btn" onclick="closeModal('editCaseModal')">×</button>
       </div>
       <input type="hidden" id="ec_index">
-      <div class="form-group"><label>施工廠商 (Col 5)</label><input type="text" id="ec_contractor"></div>
-      <div class="form-group"><label>路權機關 (Col 6)</label><input type="text" id="ec_authority"></div>
-      <div class="form-group"><label>行政區 (Col 7)</label><input type="text" id="ec_district"></div>
-      <div class="form-group"><label>施工地點 (Col 8)</label><input type="text" id="ec_road"></div>
-      <div class="form-group"><label>施工時段 (Col 12，例: 09~16)</label><input type="text" id="ec_workHours"></div>
-      <div class="form-group"><label>開工通報時間 (Col 13，例: 09:02)</label><input type="text" id="ec_startTime"></div>
+      <div class="form-group"><label>施工廠商 (Col E)</label><input type="text" id="ec_contractor"></div>
+      <div class="form-group"><label>路權機關 (Col F)</label><input type="text" id="ec_authority"></div>
+      <div class="form-group"><label>行政區 (Col G)</label><input type="text" id="ec_district"></div>
+      <div class="form-group"><label>施工地點 (Col H)</label><input type="text" id="ec_road"></div>
+      <div class="form-group"><label>施工時段 (Col L，例: 09~16)</label><input type="text" id="ec_workHours"></div>
+      <div class="form-group"><label>開工通報時間 (Col M，例: 09:02)</label><input type="text" id="ec_startTime"></div>
       <button class="btn-submit" onclick="saveCaseDetails()">💾 儲存並更新卡片</button>
     </div>
   </div>
@@ -218,7 +198,7 @@
       <div class="form-group"><label>通報次數</label>
         <select id="o_times"><option value="1">第 1 次通報</option><option value="2">第 2 次通報</option><option value="3">第 3 次 (已收工) 通報</option></select>
       </div>
-      <div class="form-group"><label>逾時原因 (對應 Col 34)</label>
+      <div class="form-group"><label>逾時原因 (對應 Col AH)</label>
         <select id="o_reason">
           <option value="其他">其他</option>
           <option value="待CLSM料">待CLSM料</option>
@@ -358,29 +338,21 @@
 
 <script>
 // ==========================================
-// 專屬密碼與 Google Apps Script URL
+// Google Apps Script API URL
 // ==========================================
-const ACCESS_CODE = "1049"; 
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby8-IPuXyqZ3-N0Cmjssc7PaqVIVGQzMBFvOfQIlIXSgNwS50xvyPMn-3VSoKyYJsP6/exec";
 
 let cases = [];
 
-function handleEnter(e) { if (e.key === 'Enter') verifyCode(); }
-function verifyCode() {
-  if (document.getElementById("authCode").value === ACCESS_CODE) {
-    document.getElementById("lockScreen").style.display = "none";
-    document.getElementById("mainSystem").style.display = "block";
-    const now = new Date();
-    document.getElementById("e_time1").value = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
-    
-    // 初始化帶入一筆測試資料
-    document.getElementById("newCaseId").value = "348769";
-    addCase();
-  } else {
-    alert("❌ 授權代碼錯誤！");
-    document.getElementById("authCode").value = "";
-  }
-}
+// 頁面載入直接初始化
+window.onload = () => {
+  const now = new Date();
+  document.getElementById("e_time1").value = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+  
+  // 載入預設案號
+  document.getElementById("newCaseId").value = "348769";
+  addCase();
+};
 
 // 新增案件
 function addCase() {
@@ -464,7 +436,6 @@ function renderDashboard() {
   }).join("");
 }
 
-// 正常收工
 function markComplete(index) {
   const now = new Date();
   const timeStr = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
@@ -472,7 +443,6 @@ function markComplete(index) {
   setTimer(index, '正常收工', 0);
 }
 
-// 計時器
 function setTimer(index, statusText, minutes) {
   const c = cases[index];
   c.status = statusText;
@@ -502,7 +472,6 @@ function setTimer(index, statusText, minutes) {
   }
 }
 
-// 編輯案件
 function openEditCaseModal(index) {
   const c = cases[index];
   document.getElementById("ec_index").value = index;
@@ -529,7 +498,6 @@ function saveCaseDetails() {
   alert(`✅ 案號 ${c.id} 詳細資訊已更新！`);
 }
 
-// 違規標籤
 function openViolationModal(index) {
   document.getElementById("v_caseIndex").value = index;
   document.getElementById("violationModal").style.display = "flex";
@@ -556,7 +524,6 @@ function removeViolation(caseIndex, vIndex) {
   renderDashboard();
 }
 
-// 寫入 Google Sheets
 function logData(index) {
   const c = cases[index];
   const now = new Date();
@@ -581,8 +548,8 @@ function removeCase(index) {
   }
 }
 
-// ================= 一鍵匯出 39 欄官方 EXCEL 報表引擎 =================
-function exportToExcel() {
+// ================= 官方 39 欄完全對齊 EXCELJS 匯出引擎 =================
+async function exportToOfficialExcel() {
   if (cases.length === 0) {
     alert("目前沒有任何監控案件，請先新增案件！");
     return;
@@ -592,22 +559,156 @@ function exportToExcel() {
   const dateStr = `${now.getFullYear()}/${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getDate().toString().padStart(2,'0')}`;
   const fileDateStr = `${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}`;
 
-  // 1. 建置官方 39 欄表頭結構
-  const headers = [
-    // Row 1
-    ["道路挖掘案件開工及收工打卡情形(每日)", ...Array(38).fill("")],
-    // Row 2
-    ["序號", "日期", "案號", "申請單位", "施工廠商", "路權機關", "行政區", "施工地點", "敏感性及重要幹道", "", "", "施工時段", "開工通報\n時間", "攝影機情形", "", "", "", "案件監控系統審查", "", "", "", "", "案件監控系統審查", "", "", "", "孔蓋工程", "", "", "逾時通報", "", "", "", "逾時原因", "遇管障是否通報", "收工通報\n時間", "實際收工\n時間", "是否\n逾時\n(駐點先依收工通報時間初判)", "施工通報紀錄\n(無法打卡原因、開(收)工及自主查(含定位測量)驗照片情形或其他等各項狀況記錄)"],
-    // Row 3
-    ["", "", "", "", "", "", "", "", "", "", "", "", "", "是否架設", "未全程攝影\n(無此工項者，請於欄位填寫\"X\")", "", "", "畫面查驗", "", "", "", "開工通報", "自主查驗", "監控影像", "定位測量", "收工通報", "孔蓋提升\n(降埋)工程 ", "", "", "申請(核准)時間", "路權是否線上審核完畢", "已逾時案件15分鐘內/敏感路段兩小時前是否通報", "通報群組時間", "", "", "", "", "", ""],
-    // Row 4
-    ["", "", "", "", "", "", "", "", "是否\n位於", "當日施工前、進場、逾時、收工，是否通報NTPC群組", "異常狀況或逾時尖峰時段(6:30~9:00；17:00~19:00)恐嚴重影響交通，現場管理或監造人員應提早通報路權機關、交控中心、道管中心及當地分局派出所，並加派義交人員指揮", "", "", "", "違規態樣", "是否交維機具全部撤離後才移除畫面", "群組通報時間", "交維是否符合計畫書", "是否故意遮擋、轉向或關機等情形", "有無原土回填情形", "關閉攝影機前是否有環視工區並經駐點人員確認", "相關照片及人員證照是否上傳正確", "施工照片是否上傳正確", "影像是否審查完成", "管線埋設深度量測是否正確", "收工照片是否上傳正確", "施作數量\n(孔)", "降埋\n深度\n(m)", "孔底深度\n(m)", "", "", "", "", "", "", "", "", "", ""],
-    // Row 5: 官方標準範本列
-    ["範本", "2026/03/01", "250512", "中華電信股份有限公司臺灣北區電信分公司新北營運處第二客戶網路中心", "漢維營造有限公司", "中和區公所", "中和區", "立人街46號", "是\n否", "非此類路段\n依規定通報\n未依規定通報", "非此類路段\n無異常狀況或逾時\n依規定通報\n未依規定通報", "09~16", "09:15", "是\n否", "無架設\n無畫面(15:30~16:00)\n不需架設", "是\n否(原因)", "16:10 \n未通報", "無架設\n是\n否\n\n\n以上缺失已通知改善", "無架設\n是(時間)\n否\n\n\n以上缺失已通知改善", "無架設\n有(時間)\n疑似(時間)\n無\n\n以上缺失已通知改善", "是\n否", "是\n否(填寫無法立即改善原因填寫於備註)\n\n例：挖掘前照片已遭施工機具佔用", "是\n否(填寫無法立即改善原因填寫於備註)\n\n例：鋼筋加固照片漏拍", "是\n否(填寫無法立即改善原因填寫於備註)\n\n例：系統更新無法審查", "是\n否(填寫無法立即改善原因填寫於備註)\n\n例：轉折點漏拍且管溝已回填", "是\n否(填寫無法立即改善原因填寫於備註)", "4", "0.21\n0.22\n0.23\n0.24", "2.1\n2.2\n2.3\n2.4", "18:30", "是/否", "未通報\n是\n否", "16:10 \n未通報", "挖損管線\n遇管障\n待CLSM料\n待AC料\n機具故障\n下雨\n其他(原因)\n(上述原因擇一)", "無管障\n是\n否\n(擇一)", "18:45", "18:20", "是/否", "挖掘前有誤(已被機具佔用)。\n施工告示牌有誤(太遠不清楚)。\n定位測量照片缺少(管線埋設深度測量-轉折點(含水平及垂直變異點))。"]
+  const workbook = new ExcelJS.Workbook();
+  const ws = workbook.addWorksheet('一般申挖', {
+    views: [{ showGridLines: true }]
+  });
+
+  // 1. 設定 39 欄官方完全對齊之精確寬度
+  ws.columns = [
+    { key: 'col1', width: 5.5 },   // A: 序號
+    { key: 'col2', width: 10.5 },  // B: 日期
+    { key: 'col3', width: 11.5 },  // C: 案號
+    { key: 'col4', width: 22.5 },  // D: 申請單位
+    { key: 'col5', width: 19.5 },  // E: 施工廠商
+    { key: 'col6', width: 13.5 },  // F: 路權機關
+    { key: 'col7', width: 10.0 },  // G: 行政區
+    { key: 'col8', width: 46.5 },  // H: 施工地點
+    { key: 'col9', width: 10.5 },  // I: 敏感幹道是否位於
+    { key: 'col10', width: 17.5 }, // J: NTPC群組通報
+    { key: 'col11', width: 18.5 }, // K: 尖峰時段通報
+    { key: 'col12', width: 9.0 },  // L: 施工時段
+    { key: 'col13', width: 9.0 },  // M: 開工通報時間
+    { key: 'col14', width: 7.5 },  // N: 攝影機是否架設
+    { key: 'col15', width: 16.0 }, // O: 未全程攝影違規態樣
+    { key: 'col16', width: 13.0 }, // P: 機具撤離後才移除畫面
+    { key: 'col17', width: 13.0 }, // Q: 群組通報時間
+    { key: 'col18', width: 12.0 }, // R: 交維是否符合計畫書
+    { key: 'col19', width: 12.5 }, // S: 是否故意遮擋轉向關機
+    { key: 'col20', width: 12.0 }, // T: 有無原土回填
+    { key: 'col21', width: 11.0 }, // U: 關閉攝影機前環視工區
+    { key: 'col22', width: 16.0 }, // V: 開工相關照片及證照
+    { key: 'col23', width: 15.5 }, // W: 自主查驗施工照片
+    { key: 'col24', width: 13.0 }, // X: 監控影像審查完成
+    { key: 'col25', width: 16.5 }, // Y: 定位測量深度量測
+    { key: 'col26', width: 15.0 }, // Z: 收工通報照片上傳
+    { key: 'col27', width: 9.0 },  // AA: 孔蓋施作數量
+    { key: 'col28', width: 13.0 }, // AB: 降埋深度
+    { key: 'col29', width: 13.0 }, // AC: 孔底深度
+    { key: 'col30', width: 11.0 }, // AD: 逾時申請時間
+    { key: 'col31', width: 14.5 }, // AE: 路權是否線上審核
+    { key: 'col32', width: 14.5 }, // AF: 逾時及時通報
+    { key: 'col33', width: 15.0 }, // AG: 通報群組時間
+    { key: 'col34', width: 13.0 }, // AH: 逾時原因
+    { key: 'col35', width: 11.0 }, // AI: 遇管障是否通報
+    { key: 'col36', width: 9.0 },  // AJ: 收工通報時間
+    { key: 'col37', width: 13.0 }, // AK: 實際收工時間
+    { key: 'col38', width: 9.0 },  // AL: 是否逾時
+    { key: 'col39', width: 40.0 }  // AM: 施工通報紀錄
   ];
 
-  // 2. 轉換所有監控中的案件資料至 39 欄
-  const dataRows = cases.map((c, idx) => {
+  // 2. 寫入官方第 1 列至第 4 列標題
+  const r1 = ws.getRow(1);
+  r1.height = 30.75;
+  r1.getCell(1).value = "道路挖掘案件開工及收工打卡情形(每日)";
+
+  const r2 = ws.getRow(2);
+  r2.height = 42.75;
+  r2.getCell(1).value = "序號";
+  r2.getCell(2).value = "日期";
+  r2.getCell(3).value = "案號";
+  r2.getCell(4).value = "申請單位";
+  r2.getCell(5).value = "施工廠商";
+  r2.getCell(6).value = "路權機關";
+  r2.getCell(7).value = "行政區";
+  r2.getCell(8).value = "施工地點";
+  r2.getCell(9).value = "敏感性及重要幹道";
+  r2.getCell(12).value = "施工時段";
+  r2.getCell(13).value = "開工通報\n時間";
+  r2.getCell(14).value = "攝影機情形";
+  r2.getCell(22).value = "案件監控系統審查";
+  r2.getCell(27).value = "孔蓋工程";
+  r2.getCell(30).value = "逾時通報";
+  r2.getCell(34).value = "逾時原因";
+  r2.getCell(35).value = "遇管障是否通報";
+  r2.getCell(36).value = "收工通報\n時間";
+  r2.getCell(37).value = "實際收工\n時間";
+  r2.getCell(38).value = "是否\n逾時\n(駐點先依收工通報時間初判)";
+  r2.getCell(39).value = "施工通報紀錄\n(無法打卡原因、開(收)工及自主查(含定位測量)驗照片情形或其他等各項狀況記錄)";
+
+  const r3 = ws.getRow(3);
+  r3.height = 39.0;
+  r3.getCell(14).value = "是否架設";
+  r3.getCell(15).value = "未全程攝影\n(無此工項者，請於欄位填寫\"X\")";
+  r3.getCell(18).value = "畫面查驗";
+  r3.getCell(22).value = "開工通報";
+  r3.getCell(23).value = "自主查驗";
+  r3.getCell(24).value = "監控影像";
+  r3.getCell(25).value = "定位測量";
+  r3.getCell(26).value = "收工通報";
+  r3.getCell(27).value = "孔蓋提升\n(降埋)工程 ";
+  r3.getCell(30).value = "申請(核准)時間";
+  r3.getCell(31).value = "路權是否線上審核完畢";
+  r3.getCell(32).value = "已逾時案件15分鐘內/敏感路段兩小時前是否通報";
+  r3.getCell(33).value = "通報群組時間";
+
+  const r4 = ws.getRow(4);
+  r4.height = 98.0;
+  r4.getCell(9).value = "是否\n位於";
+  r4.getCell(10).value = "當日施工前、進場、逾時、收工，是否通報NTPC群組";
+  r4.getCell(11).value = "異常狀況或逾時尖峰時段(6:30~9:00；17:00~19:00)恐嚴重影響交通，現場管理或監造人員應提早通報路權機關、交控中心、道管中心及當地分局派出所，並加派義交人員指揮";
+  r4.getCell(15).value = "違規態樣";
+  r4.getCell(16).value = "是否交維機具全部撤離後才移除畫面";
+  r4.getCell(17).value = "群組通報時間";
+  r4.getCell(18).value = "交維是否符合計畫書";
+  r4.getCell(19).value = "是否故意遮擋、轉向或關機等情形";
+  r4.getCell(20).value = "有無原土回填情形";
+  r4.getCell(21).value = "關閉攝影機前是否有環視工區並經駐點人員確認";
+  r4.getCell(22).value = "相關照片及人員證照是否上傳正確";
+  r4.getCell(23).value = "施工照片是否上傳正確";
+  r4.getCell(24).value = "影像是否審查完成";
+  r4.getCell(25).value = "管線埋設深度量測是否正確";
+  r4.getCell(26).value = "收工照片是否上傳正確";
+  r4.getCell(27).value = "施作數量\n(孔)";
+  r4.getCell(28).value = "降埋\n深度\n(m)";
+  r4.getCell(29).value = "孔底深度\n(m)";
+
+  // 3. 寫入官方第 5 列範本（紅字呈現）
+  const r5 = ws.getRow(5);
+  r5.height = 51.0;
+  const sampleValues = [
+    "範本", "2026/03/01", "250512",
+    "中華電信股份有限公司臺灣北區電信分公司新北營運處第二客戶網路中心",
+    "漢維營造有限公司", "中和區公所", "中和區", "立人街46號",
+    "是\n否", "非此類路段\n依規定通報\n未依規定通報",
+    "非此類路段\n無異常狀況或逾時\n依規定通報\n未依規定通報",
+    "09~16", "09:15", "是\n否",
+    "無架設\n無畫面(15:30~16:00)\n不需架設", "是\n否(原因)", "16:10 \n未通報",
+    "無架設\n是\n否\n\n\n以上缺失已通知改善",
+    "無架設\n是(時間)\n否\n\n\n以上缺失已通知改善",
+    "無架設\n有(時間)\n疑似(時間)\n無\n\n以上缺失已通知改善",
+    "是\n否",
+    "是\n否(填寫無法立即改善原因填寫於備註)\n\n例：挖掘前照片已遭施工機具佔用",
+    "是\n否(填寫無法立即改善原因填寫於備註)\n\n例：鋼筋加固照片漏拍",
+    "是\n否(填寫無法立即改善原因填寫於備註)\n\n例：系統更新無法審查",
+    "是\n否(填寫無法立即改善原因填寫於備註)\n\n例：轉折點漏拍且管溝已回填",
+    "是\n否(填寫無法立即改善原因填寫於備註)\n",
+    "4", "0.21\n0.22\n0.23\n0.24", "2.1\n2.2\n2.3\n2.4",
+    "18:30", "是/否", "未通報\n是\n否", "16:10 \n未通報",
+    "挖損管線\n遇管障\n待CLSM料\n待AC料\n機具故障\n下雨\n其他(原因)\n(上述原因擇一)",
+    "無管障\n是\n否\n(擇一)", "18:45", "18:20", "是/否",
+    "挖掘前有誤(已被機具佔用)。\n施工告示牌有誤(太遠不清楚)。\n定位測量照片缺少(管線埋設深度測量-轉折點(含水平及垂直變異點))。"
+  ];
+  sampleValues.forEach((val, idx) => {
+    r5.getCell(idx + 1).value = val;
+  });
+
+  // 4. 寫入實體監控案件資料（從第 6 列開始）
+  cases.forEach((c, idx) => {
+    const rowNum = 6 + idx;
+    const rData = ws.getRow(rowNum);
+    rData.height = 40.15;
+
     let remarks = "查無異常";
     if (c.violations.length > 0) {
       remarks = c.violations.join("；");
@@ -618,61 +719,80 @@ function exportToExcel() {
     const isOt = c.isOvertime ? "是" : "否";
     const finish = c.finishTime || (c.status.includes("正常收工") ? (c.lastLog !== "無" ? c.lastLog : "17:12") : "施工中");
 
-    return [
-      idx + 1,                                                          // Col 1: 序號
-      dateStr,                                                          // Col 2: 日期
-      c.id,                                                             // Col 3: 案號
-      c.applicant,                                                      // Col 4: 申請單位
-      c.contractor,                                                     // Col 5: 施工廠商
-      c.authority,                                                      // Col 6: 路權機關
-      c.district,                                                       // Col 7: 行政區
-      c.road,                                                           // Col 8: 施工地點
-      "是",                                                             // Col 9: 敏感幹道
-      "非此類路段",                                                     // Col 10: NTPC群組通報
-      "非此類路段",                                                     // Col 11: 尖峰時段通報
-      c.workHours,                                                      // Col 12: 施工時段
-      c.startTime,                                                      // Col 13: 開工通報時間
-      "是",                                                             // Col 14: 攝影機是否架設
-      c.status.includes("無畫面") ? `無畫面(${c.lastLog !== '無' ? c.lastLog : '15:30'}~改善)` : "X", // Col 15: 違規態樣
-      "是",                                                             // Col 16: 機具撤離才移除畫面
-      c.status.includes("無畫面") ? (c.lastLog !== "無" ? c.lastLog : "10:30") : "X", // Col 17: 群組通報時間
-      c.violations.some(v => v.includes("交維")) ? "否" : "是",         // Col 18: 交維是否符合計畫書
-      c.status.includes("遮擋") ? "是" : "否",                          // Col 19: 是否故意遮擋
-      "無",                                                             // Col 20: 有無原土回填
-      "是",                                                             // Col 21: 關閉前環視工區
-      c.violations.some(v => v.includes("證照")) ? "否(缺證照)" : "是", // Col 22: 開工照片證照
-      c.violations.some(v => v.includes("尺規") || v.includes("自主")) ? "否" : "是", // Col 23: 自主查驗照片
-      "是",                                                             // Col 24: 影像是否審查完成
-      c.violations.some(v => v.includes("定位") || v.includes("白板")) ? "否" : "是", // Col 25: 定位測量深度
-      "是",                                                             // Col 26: 收工照片
-      "X",                                                              // Col 27: 孔蓋施作數量
-      "X",                                                              // Col 28: 降埋深度
-      "X",                                                              // Col 29: 孔底深度
-      c.isOvertime ? c.otApplyTime : "X",                               // Col 30: 申請核准時間
-      c.isOvertime ? "是" : "X",                                        // Col 31: 路權是否線上審核
-      c.isOvertime ? "是" : "X",                                        // Col 32: 逾時及時通報
-      c.isOvertime ? c.otGroupTime : "X",                               // Col 33: 通報群組時間
-      c.isOvertime ? c.otReason : "無",                                 // Col 34: 逾時原因
-      "無管障",                                                         // Col 35: 遇管障通報
-      finish,                                                           // Col 36: 收工通報時間
-      finish,                                                           // Col 37: 實際收工時間
-      isOt,                                                             // Col 38: 是否逾時
-      remarks                                                           // Col 39: 施工通報紀錄
+    const rowValues = [
+      idx + 1, dateStr, c.id, c.applicant, c.contractor, c.authority, c.district, c.road,
+      "是", "非此類路段", "非此類路段", c.workHours, c.startTime, "是",
+      c.status.includes("無畫面") ? `無畫面(${c.lastLog !== '無' ? c.lastLog : '15:30'}~改善)` : "X",
+      "是",
+      c.status.includes("無畫面") ? (c.lastLog !== "無" ? c.lastLog : "10:30") : "X",
+      c.violations.some(v => v.includes("交維")) ? "否" : "是",
+      c.status.includes("遮擋") ? "是" : "否",
+      "無", "是",
+      c.violations.some(v => v.includes("證照")) ? "否(缺證照)" : "是",
+      c.violations.some(v => v.includes("尺規") || v.includes("自主")) ? "否" : "是",
+      "是",
+      c.violations.some(v => v.includes("定位") || v.includes("白板")) ? "否" : "是",
+      "是",
+      "X", "X", "X",
+      c.isOvertime ? c.otApplyTime : "X",
+      c.isOvertime ? "是" : "X",
+      c.isOvertime ? "是" : "X",
+      c.isOvertime ? c.otGroupTime : "X",
+      c.isOvertime ? c.otReason : "無",
+      "無管障",
+      finish, finish, isOt, remarks
     ];
+
+    rowValues.forEach((val, cIdx) => {
+      rData.getCell(cIdx + 1).value = val;
+    });
   });
 
-  // 3. 封裝工作表與檔案下載
-  const fullSheetData = [...headers, ...dataRows];
-  const ws = XLSX.utils.aoa_to_sheet(fullSheetData);
-  const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, ws, "一般申挖");
+  // 5. 官方規定 30 組跨欄置中範圍完全合併
+  const merges = [
+    'A1:AM1', 'A2:A4', 'B2:B4', 'C2:C4', 'D2:D4', 'E2:E4', 'F2:F4', 'G2:G4', 'H2:H4',
+    'I2:K3', 'L2:L4', 'M2:M4', 'N2:U2', 'N3:N4', 'O3:Q3', 'R3:U3', 'V2:Z2',
+    'AA2:AC2', 'AA3:AC3', 'AD2:AG2', 'AD3:AD4', 'AE3:AE4', 'AF3:AF4', 'AG3:AG4',
+    'AH2:AH4', 'AI2:AI4', 'AJ2:AJ4', 'AK2:AK4', 'AL2:AL4', 'AM2:AM4'
+  ];
+  merges.forEach(m => ws.mergeCells(m));
 
+  // 6. 套用官方格式字體、對齊、外框線與紅字
+  const thinBorder = {
+    top: { style: 'thin', color: { argb: 'FF000000' } },
+    left: { style: 'thin', color: { argb: 'FF000000' } },
+    bottom: { style: 'thin', color: { argb: 'FF000000' } },
+    right: { style: 'thin', color: { argb: 'FF000000' } }
+  };
+
+  const totalRows = 5 + cases.length;
+  for (let r = 1; r <= totalRows; r++) {
+    const row = ws.getRow(r);
+    for (let c = 1; c <= 39; c++) {
+      const cell = row.getCell(c);
+      cell.border = thinBorder;
+      cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+
+      if (r === 1) {
+        cell.font = { name: '微軟正黑體', size: 16, bold: true };
+      } else if (r >= 2 && r <= 4) {
+        cell.font = { name: '微軟正黑體', size: 11, bold: false };
+      } else if (r === 5) {
+        cell.font = { name: '微軟正黑體', size: 11, bold: false, color: { argb: 'FFFF0000' } };
+      } else {
+        cell.font = { name: '微軟正黑體', size: 11, bold: false };
+      }
+    }
+  }
+
+  // 7. 匯出檔案
+  const buffer = await workbook.xlsx.writeBuffer();
   const filename = `${fileDateStr}_台水12區_道路挖掘案件開工及收工打卡.xlsx`;
-  XLSX.writeFile(wb, filename);
-  alert(`✅ 報表匯出成功！已自動產生官方 39 欄報表：\n${filename}`);
+  saveAs(new Blob([buffer], { type: "application/octet-stream" }), filename);
+  alert(`✅ 報表匯出成功！已產出與官方一模一樣的 39 欄標準報表：\n${filename}`);
 }
 
-// Modal 控制
+// 通用 Modal 控制
 function openModal(modalId, index = null) {
   if(index !== null) {
     if(modalId === 'overtimeModal') document.getElementById("o_caseId").value = cases[index].id;
@@ -689,7 +809,6 @@ function switchTab(evt, tabId) {
   evt.currentTarget.classList.add("active");
 }
 
-// 逾時通報
 function generateOvertime() {
   const caseId = document.getElementById("o_caseId").value;
   const groupTitle = document.getElementById("o_groupTitle").value;
@@ -706,7 +825,6 @@ function generateOvertime() {
     if (diff > 0) { hrs = Math.floor(diff/3600000); mins = Math.floor((diff%3600000)/60000); }
   }
 
-  // 標記案件狀態為逾時
   const targetCase = cases.find(c => c.id === caseId);
   if (targetCase) {
     targetCase.isOvertime = true;
@@ -723,7 +841,6 @@ function generateOvertime() {
   navigator.clipboard.writeText(text).then(() => { alert("✅ 逾時通報文已複製，並已同步標記至 Excel 報表逾時欄位！"); closeModal('overtimeModal'); });
 }
 
-// 緊急通報
 function generateEmergency() {
   const caseId = document.getElementById("e_caseId").value;
   const now = new Date();
@@ -731,7 +848,6 @@ function generateEmergency() {
   navigator.clipboard.writeText(text).then(() => { alert("🚨 緊急通報文已複製！"); closeModal('emergencyModal'); });
 }
 
-// 計算機
 function checkAC() {
   const ac1 = parseFloat(document.getElementById('c_ac1').value) || 0;
   const ac2 = parseFloat(document.getElementById('c_ac2').value) || 0;
