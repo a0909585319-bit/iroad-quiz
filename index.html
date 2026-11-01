@@ -3,9 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>iROAD 輔助系統</title>
+  <title>iROAD 外包戰情監控終端 (含 39 欄官方 Excel 匯出引擎)</title>
+  <!-- 引入 SheetJS 瀏覽器端 Excel 生成引擎 -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
   <style>
-    /* 科技感暗黑主題變數 */
     :root {
       --bg-dark: #0f172a; --bg-card: #1e293b; --bg-modal: #0f172ae6;
       --text-main: #f8fafc; --text-sub: #94a3b8;
@@ -17,51 +18,62 @@
     }
 
     * { box-sizing: border-box; }
-    body { font-family: "Microsoft JhengHei", "Courier New", monospace; background: var(--bg-dark); color: var(--text-main); margin: 0; padding: 20px; line-height: 1.6; }
+    body { font-family: "Microsoft JhengHei", "Courier New", monospace; background: var(--bg-dark); color: var(--text-main); margin: 0; line-height: 1.6; }
     
-    /* 頂部導覽列 */
+    /* 門禁畫面 */
+    #lockScreen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-dark); display: flex; justify-content: center; align-items: center; z-index: 9999; flex-direction: column; }
+    .lock-box { background: var(--bg-card); padding: 40px; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 10px 30px rgba(0,0,0,0.5); text-align: center; max-width: 400px; width: 90%; }
+    .lock-box h2 { color: var(--accent); margin-top: 0; margin-bottom: 20px; letter-spacing: 2px; }
+    .lock-box input { width: 100%; padding: 15px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); color: white; border-radius: 8px; font-size: 1.2rem; text-align: center; margin-bottom: 20px; letter-spacing: 3px; }
+    .lock-box input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 10px rgba(56,189,248,0.2); }
+    .btn-unlock { width: 100%; background: var(--accent); color: var(--bg-dark); border: none; padding: 15px; border-radius: 8px; font-weight: bold; font-size: 1.1rem; cursor: pointer; transition: 0.2s; }
+    .btn-unlock:hover { background: var(--accent-hover); }
+
+    /* 主系統 */
+    #mainSystem { display: none; padding: 20px; }
     .top-bar { display: flex; justify-content: space-between; align-items: center; background: var(--bg-card); padding: 15px 25px; border-radius: 12px; border: 1px solid var(--border); box-shadow: 0 4px 15px rgba(0,0,0,0.3); margin-bottom: 25px; flex-wrap: wrap; gap: 15px; }
     .logo { font-size: 1.6rem; font-weight: bold; color: var(--accent); display: flex; align-items: center; gap: 10px; letter-spacing: 1px; }
     .sys-tools { display: flex; gap: 10px; flex-wrap: wrap; }
     .btn-tool { background: transparent; color: var(--text-main); border: 1px solid var(--border); padding: 8px 14px; border-radius: 6px; cursor: pointer; transition: 0.2s; font-weight: bold; font-size: 0.9rem; }
     .btn-tool:hover { background: var(--border); color: var(--accent); }
+    .btn-excel { background: #059669; border-color: #10b981; color: white; }
+    .btn-excel:hover { background: #047857; color: white; }
 
-    /* 案件輸入區 */
     .input-zone { display: flex; gap: 15px; max-width: 600px; margin-bottom: 25px; }
     .input-zone input { flex: 1; padding: 12px 15px; border: 1px solid var(--border); background: var(--bg-card); color: white; border-radius: 8px; font-size: 1.1rem; outline: none; }
     .input-zone input:focus { border-color: var(--accent); box-shadow: 0 0 10px rgba(56, 189, 248, 0.2); }
     .btn-add { background: var(--accent); color: var(--bg-dark); border: none; padding: 12px 25px; border-radius: 8px; font-weight: bold; font-size: 1.1rem; cursor: pointer; transition: 0.2s; }
-    .btn-add:hover { background: var(--accent-hover); box-shadow: 0 0 15px rgba(56, 189, 248, 0.4); }
+    .btn-add:hover { background: var(--accent-hover); }
 
-    /* 戰情面板網格 */
+    /* 戰情網格 */
     .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 20px; }
     .case-card { background: var(--bg-card); border: 1px solid var(--border); padding: 20px; border-radius: 12px; display: flex; flex-direction: column; position: relative; overflow: hidden; transition: transform 0.2s; }
     .case-card:hover { transform: translateY(-2px); box-shadow: 0 5px 20px rgba(0,0,0,0.4); }
     
-    /* 狀態燈號列 */
     .card-indicator { height: 4px; width: 100%; position: absolute; top: 0; left: 0; background: var(--border); }
     .case-card.status-danger .card-indicator { background: var(--danger); box-shadow: 0 0 10px var(--danger); }
     .case-card.status-warning .card-indicator { background: var(--warning); box-shadow: 0 0 10px var(--warning); }
     .case-card.status-success .card-indicator { background: var(--success); box-shadow: 0 0 10px var(--success); }
 
-    .case-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; margin-top: 5px; }
-    .case-id { font-size: 1.4rem; font-weight: bold; color: var(--text-main); letter-spacing: 1px; }
+    .case-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; margin-top: 5px; }
+    .case-id { font-size: 1.35rem; font-weight: bold; color: var(--text-main); }
+    .case-tools { display: flex; gap: 8px; align-items: center; }
+    .case-edit-btn { color: var(--accent); cursor: pointer; font-size: 0.85rem; font-weight: bold; border: 1px solid var(--accent); padding: 2px 6px; border-radius: 4px; }
+    .case-edit-btn:hover { background: var(--accent); color: var(--bg-dark); }
     .case-remove { color: var(--text-sub); cursor: pointer; font-size: 0.9rem; }
     .case-remove:hover { color: var(--danger); }
     
+    .case-subinfo { font-size: 0.8rem; color: #94a3b8; margin-bottom: 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .status-text { font-size: 0.95rem; color: var(--accent); margin-bottom: 10px; font-weight: bold; background: rgba(56, 189, 248, 0.1); padding: 8px; border-radius: 6px; border-left: 3px solid var(--accent); }
     .status-text.alert { color: var(--danger); background: rgba(239, 68, 68, 0.1); border-color: var(--danger); }
 
-    /* 違規標籤區 */
     .violation-tags { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 12px; }
     .tag { background: rgba(239, 68, 68, 0.2); color: #fca5a5; border: 1px solid rgba(239, 68, 68, 0.4); padding: 3px 8px; border-radius: 4px; font-size: 0.8rem; display: flex; align-items: center; gap: 5px; }
     .tag span { cursor: pointer; font-weight: bold; }
     .tag span:hover { color: white; }
     
-    /* 計時器 */
     .timer-display { font-size: 2rem; font-weight: bold; color: var(--danger); text-align: center; margin: 10px 0; display: none; background: rgba(0,0,0,0.2); border-radius: 8px; padding: 8px; font-family: monospace; letter-spacing: 3px; border: 1px solid rgba(239,68,68,0.3); }
 
-    /* 按鈕群組 */
     .action-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
     .btn-action { background: rgba(255,255,255,0.05); color: var(--text-main); border: 1px solid var(--border); padding: 8px; border-radius: 6px; cursor: pointer; font-size: 0.9rem; font-weight: bold; transition: 0.2s; text-align: center; }
     .btn-action:hover { background: rgba(255,255,255,0.1); }
@@ -80,7 +92,7 @@
     .btn-violation { background: rgba(239, 68, 68, 0.1); border: 1px dashed var(--danger); color: #f87171; padding: 8px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: bold; text-align: center; transition: 0.2s; }
     .btn-violation:hover { background: rgba(239, 68, 68, 0.2); }
 
-    /* Modal (彈出視窗) 樣式 */
+    /* 彈出視窗 */
     .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: var(--bg-modal); z-index: 1000; justify-content: center; align-items: center; padding: 20px; backdrop-filter: blur(5px); }
     .modal-content { background: var(--bg-card); border: 1px solid var(--border); padding: 25px; border-radius: 12px; max-width: 650px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
     .modal-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); padding-bottom: 12px; margin-bottom: 15px; }
@@ -88,7 +100,6 @@
     .close-btn { background: none; border: none; color: var(--text-sub); font-size: 1.5rem; cursor: pointer; }
     .close-btn:hover { color: white; }
 
-    /* 頁籤按鈕 (用於法規速查) */
     .tab-buttons { display: flex; gap: 5px; margin-bottom: 15px; flex-wrap: wrap; }
     .tab-btn { background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: var(--text-sub); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; font-weight: bold; }
     .tab-btn.active { background: var(--accent); color: var(--bg-dark); border-color: var(--accent); }
@@ -97,7 +108,6 @@
     .tab-pane ul { padding-left: 20px; margin: 5px 0; }
     .tab-pane li { margin-bottom: 8px; font-size: 0.95rem; color: #cbd5e1; }
 
-    /* 表單元件 */
     .form-group { margin-bottom: 12px; }
     .form-group label { display: block; margin-bottom: 5px; color: var(--text-sub); font-size: 0.85rem; font-weight: bold; }
     .form-group input, .form-group select { width: 100%; padding: 9px; background: rgba(0,0,0,0.2); border: 1px solid var(--border); color: white; border-radius: 6px; font-family: inherit; font-size: 0.95rem; }
@@ -105,10 +115,8 @@
     .btn-submit { width: 100%; background: var(--accent); color: var(--bg-dark); border: none; padding: 11px; border-radius: 6px; font-weight: bold; font-size: 1rem; cursor: pointer; margin-top: 5px; }
     .btn-submit:hover { background: var(--accent-hover); }
 
-    /* 計算機結果區 */
     .calc-result { background: rgba(16, 185, 129, 0.1); border: 1px dashed var(--success); padding: 12px; border-radius: 8px; margin-top: 10px; color: var(--success); font-weight: bold; display: none; font-size: 0.9rem; }
     .calc-result.fail { background: rgba(239, 68, 68, 0.1); border-color: var(--danger); color: var(--danger); }
-
     .script-box { background: rgba(0,0,0,0.3); border: 1px solid var(--border); padding: 12px; border-radius: 8px; margin-bottom: 12px; }
     .script-box h4 { margin-top: 0; color: var(--warning); margin-bottom: 8px; font-size: 0.95rem; }
     .script-box p { font-size: 0.9rem; margin: 4px 0; color: #cbd5e1; }
@@ -116,129 +124,89 @@
 </head>
 <body>
 
-  <!-- 頂部導覽列 -->
-  <div class="top-bar">
-    <div class="logo">📡 iROAD 輔助系統</div>
-    <div class="sys-tools">
-      <button class="btn-tool" onclick="openModal('ruleModal')">📋 審查</button>
-      <button class="btn-tool" onclick="openModal('calcModal')">🧮 計算機</button>
-      <button class="btn-tool" onclick="openModal('scriptModal')">📞 通話</button>
+  <!-- 門禁驗證 -->
+  <div id="lockScreen">
+    <div class="lock-box">
+      <h2>🔒 系統安全驗證</h2>
+      <p style="color: var(--text-sub); margin-bottom: 25px; font-size: 0.95rem;">請輸入授權代碼以進入 iROAD 監控終端</p>
+      <input type="password" id="authCode" placeholder="Enter Access Code" onkeypress="handleEnter(event)">
+      <button class="btn-unlock" onclick="verifyCode()">進入系統</button>
     </div>
   </div>
 
-  <!-- 新增案號區 -->
-  <div class="input-zone">
-    <input type="text" id="newCaseId" placeholder="輸入案號 (例: 00001)">
-    <button class="btn-add" onclick="addCase()">➕ 新增</button>
+  <!-- 主系統 -->
+  <div id="mainSystem">
+    <div class="top-bar">
+      <div class="logo">📡 iROAD 外包戰情監控終端</div>
+      <div class="sys-tools">
+        <button class="btn-tool btn-excel" onclick="exportToExcel()">📊 一鍵匯出打卡日報表 (.xlsx)</button>
+        <button class="btn-tool" onclick="openModal('ruleModal')">📋 照片審查速查</button>
+        <button class="btn-tool" onclick="openModal('calcModal')">🧮 查驗計算機</button>
+        <button class="btn-tool" onclick="openModal('scriptModal')">📞 通話小抄</button>
+      </div>
+    </div>
+
+    <!-- 新增案號 -->
+    <div class="input-zone">
+      <input type="text" id="newCaseId" placeholder="輸入監控案號 (例: 348769)">
+      <button class="btn-add" onclick="addCase()">➕ 新增監控</button>
+    </div>
+
+    <!-- 戰情面板網格 -->
+    <div class="grid" id="dashboard"></div>
   </div>
 
-  <!-- 戰情面板網格 -->
-  <div class="grid" id="dashboard"></div>
+  <!-- ================= 彈出視窗群 ================= -->
 
-  <!-- ================= Modals ================= -->
-
-  <!-- 1. 違規標籤新增 Modal -->
-  <div class="modal-overlay" id="violationModal">
-    <div class="modal-content" style="max-width: 400px; border-color: var(--danger);">
+  <!-- 案件詳細編輯 Modal (自訂匯出到 Excel 的基本欄位) -->
+  <div class="modal-overlay" id="editCaseModal">
+    <div class="modal-content">
       <div class="modal-header">
-        <h3 style="color: var(--danger);">⚠️ 登記工地違規/缺失態樣</h3>
+        <h3>✏️ 編輯案件詳細資訊 (對齊報表欄位)</h3>
+        <button class="close-btn" onclick="closeModal('editCaseModal')">×</button>
+      </div>
+      <input type="hidden" id="ec_index">
+      <div class="form-group"><label>施工廠商 (Col 5)</label><input type="text" id="ec_contractor"></div>
+      <div class="form-group"><label>路權機關 (Col 6)</label><input type="text" id="ec_authority"></div>
+      <div class="form-group"><label>行政區 (Col 7)</label><input type="text" id="ec_district"></div>
+      <div class="form-group"><label>施工地點 (Col 8)</label><input type="text" id="ec_road"></div>
+      <div class="form-group"><label>施工時段 (Col 12，例: 09~16)</label><input type="text" id="ec_workHours"></div>
+      <div class="form-group"><label>開工通報時間 (Col 13，例: 09:02)</label><input type="text" id="ec_startTime"></div>
+      <button class="btn-submit" onclick="saveCaseDetails()">💾 儲存並更新卡片</button>
+    </div>
+  </div>
+
+  <!-- 違規標籤新增 Modal -->
+  <div class="modal-overlay" id="violationModal">
+    <div class="modal-content" style="max-width: 420px; border-color: var(--danger);">
+      <div class="modal-header">
+        <h3 style="color: var(--danger);">⚠️ 登記違規/照片缺失態樣</h3>
         <button class="close-btn" onclick="closeModal('violationModal')">×</button>
       </div>
       <input type="hidden" id="v_caseIndex">
       <div class="form-group">
-        <label>選擇或自訂違規項目</label>
+        <label>選擇違規項目</label>
         <select id="v_select">
-          <option value="缺監造人員證照/非本人">缺監造人員證照 / 證照不符</option>
+          <option value="缺監造人員證照/證照不符">缺監造人員證照 / 證照不符</option>
           <option value="缺現場管理人員證照">缺現場管理人員證照</option>
-          <option value="交維未依計畫書擺設/阻塞">交維未依計畫書擺設 (造成壅塞)</option>
-          <option value="攝影機無畫面/遮擋/轉向">攝影機無畫面 / 故意遮擋轉向</option>
-          <option value="未於銑鋪前完成定位測量">未於銑鋪前完成定位測量</option>
+          <option value="交維未依計畫書擺設/阻塞交通">交維未依計畫書擺設 (阻塞交通)</option>
+          <option value="攝影機無畫面/故意遮擋轉向">攝影機無畫面 / 故意遮擋轉向</option>
           <option value="平整度未依規定使用半米尺規">平整度未依規定使用半米尺規</option>
-          <option value="定位測量缺少白板/資訊不全">定位測量缺少手寫白板或資訊不全</option>
+          <option value="定位測量缺少白板/資訊不全">定位測量缺少白板 / 資訊不全</option>
+          <option value="AC厚度不足(管溝<20/面層<5)">AC厚度不足 (管溝<20/面層<5)</option>
+          <option value="未於銑鋪前完成定位測量">未於銑鋪前完成定位測量</option>
           <option value="雨天違規進場開挖">雨天違規進場開挖</option>
         </select>
       </div>
       <div class="form-group">
-        <label>或手動輸入其他缺失備註</label>
-        <input type="text" id="v_custom" placeholder="例如: 未依規定噴塗預計銑鋪時間">
+        <label>或手動輸入自訂缺失</label>
+        <input type="text" id="v_custom" placeholder="例如: 標線未依規定沿對角線預拍">
       </div>
-      <button class="btn-submit" style="background: var(--danger); color: white;" onclick="addViolation()">➕ 新增違規記錄</button>
+      <button class="btn-submit" style="background: var(--danger); color: white;" onclick="addViolation()">➕ 標記並寫入備註</button>
     </div>
   </div>
 
-  <!-- 2. 每日必做與照片審查法規速查 Modal -->
-  <div class="modal-overlay" id="ruleModal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3>📋 道管中心照片上傳與審查規範速查</h3>
-        <button class="close-btn" onclick="closeModal('ruleModal')">×</button>
-      </div>
-      <div class="tab-buttons">
-        <button class="tab-btn active" onclick="switchTab(event, 'tab1')">開工/收工通報</button>
-        <button class="tab-btn" onclick="switchTab(event, 'tab2')">AC鋪面與管溝</button>
-        <button class="tab-btn" onclick="switchTab(event, 'tab3')">孔蓋提升降埋</button>
-        <button class="tab-btn" onclick="switchTab(event, 'tab4')">定位測量(埋深)</button>
-        <button class="tab-btn" onclick="switchTab(event, 'tab5')">平整度量測</button>
-      </div>
-      
-      <div id="tab1" class="tab-pane active script-box">
-        <h4>🟢 開工通報審查事項</h4>
-        <ul>
-          <li>挖掘前遠景：含標誌標線、整個街景，<b>機具不得佔用</b>。</li>
-          <li>施工告示牌：清晰可辨、資訊完整，<b>須張貼路證及交維圖說</b>。</li>
-          <li>證照查驗：監造與現場管理人員證照須與路證相符、無過期。</li>
-          <li>人員自拍：配戴安全帽與反光背心、臉部清晰、含工區街景。</li>
-          <li><b>標線預拍 (112/9/13起)：</b> 需由預計銑鋪範圍四個角落沿對角線拍攝施工前標線。</li>
-        </ul>
-        <h4>🔴 收工通報審查事項</h4>
-        <ul>
-          <li>管溝修復前後景：面對車行<b>順向(前)與逆向(後)</b>拍照，交維機具全撤、地面清掃乾淨。</li>
-          <li>銑鋪字樣：須依規定格式字模噴塗「預計銑鋪日期(例 7/20-7/25)」及「單位簡稱(例 台水板橋)」。</li>
-        </ul>
-      </div>
-
-      <div id="tab2" class="tab-pane script-box">
-        <h4>🚧 管溝工程與自主檢查審查</h4>
-        <ul>
-          <li>鋼筋加固：須含背景且清楚辨識鋼筋層。</li>
-          <li>CLSM回填：澆置車澆置管溝時，<b>須能清楚辨識車牌</b>。</li>
-          <li>靜置證明：體重 60kg 以上人員於回填處站立 5 分鐘以上且面層無下陷。</li>
-          <li>AC厚度：管溝 AC 厚度<b>不得小於 20cm</b>；面層 AC <b>不得小於 5cm</b>。</li>
-          <li>標線復舊：須使用<b>熱拌塑膠</b>，拍攝施作中（含機具）及完成後照片。</li>
-        </ul>
-      </div>
-
-      <div id="tab3" class="tab-pane script-box">
-        <h4>🕳️ 孔蓋提升 / 降埋工程審查</h4>
-        <ul>
-          <li>降埋深度：降埋至少 <b>20CM 以上</b>。</li>
-          <li>施工中照片：須含測量人員及背景（提升中/降埋中）。</li>
-          <li>孔底深度：水平箱尺須直立，從孔底垂直起算至路面。</li>
-          <li>高低誤差：使用<b>三米尺規</b>量測前、中心、後等處高低差。</li>
-        </ul>
-      </div>
-
-      <div id="tab4" class="tab-pane script-box">
-        <h4>📏 定位測量（埋深量測）審查</h4>
-        <ul>
-          <li><b>法定埋深標準：</b> 快慢車道≥120cm；巷道(4m下)≥70cm；人行道≥50cm；結構補強≥30cm。</li>
-          <li><b>手寫板/白板規範 (115/4/1起)：</b> 必須包含「施工日期、工程名稱、案號、工程地點、測點編號、管線埋深數值」。</li>
-          <li>箱尺操作：垂直箱尺須<b>用手扶正</b>，置於管線最上層頂部（<b>嚴禁放於鋼筋上</b>）；水平箱尺平放地面並於接觸處噴漆作記號。</li>
-        </ul>
-      </div>
-
-      <div id="tab5" class="tab-pane script-box">
-        <h4>📐 管溝臨時路面平整度量測</h4>
-        <ul>
-          <li><b>工具強制規定：</b> 必須採用<b>「半米尺規」</b>（採三米尺規者判定違規）。</li>
-          <li>量測頻率：管溝長度 &gt; 20m 者，<b>每隔 20m 量測 1 次</b>。</li>
-          <li>相片規範：遠照須含街景及整個尺規高低差，並將數據加註於地面或白板；近照須清晰可辨讀數（單位 mm）。</li>
-        </ul>
-      </div>
-    </div>
-  </div>
-
-  <!-- 3. 逾時通報精靈 Modal -->
+  <!-- 逾時通報 Modal -->
   <div class="modal-overlay" id="overtimeModal">
     <div class="modal-content">
       <div class="modal-header">
@@ -250,16 +218,23 @@
       <div class="form-group"><label>通報次數</label>
         <select id="o_times"><option value="1">第 1 次通報</option><option value="2">第 2 次通報</option><option value="3">第 3 次 (已收工) 通報</option></select>
       </div>
-      <div class="form-group"><label>施工單位</label><input type="text" id="o_company" value="台灣自來水公司第十二區管理處"></div>
-      <div class="form-group"><label>路權單位</label><input type="text" id="o_authority" value="區公所"></div>
-      <div class="form-group"><label>施工路段</label><input type="text" id="o_road" value="新北市..."></div>
-      <div class="form-group"><label>佔用情形</label><input type="text" id="o_occupation" value="雙向佔用單側車道"></div>
+      <div class="form-group"><label>逾時原因 (對應 Col 34)</label>
+        <select id="o_reason">
+          <option value="其他">其他</option>
+          <option value="待CLSM料">待CLSM料</option>
+          <option value="待AC料">待AC料</option>
+          <option value="遇管障">遇管障</option>
+          <option value="機具故障">機具故障</option>
+          <option value="下雨">下雨</option>
+          <option value="挖損管線">挖損管線</option>
+        </select>
+      </div>
       <div class="form-group"><label>原應收工時間 (HH:MM)</label><input type="time" id="o_endTime" value="16:00"></div>
       <button class="btn-submit" onclick="generateOvertime()">📋 產生並複製通報文</button>
     </div>
   </div>
 
-  <!-- 4. 緊急挖損通報 Modal -->
+  <!-- 緊急通報 Modal -->
   <div class="modal-overlay" id="emergencyModal">
     <div class="modal-content" style="border-color: var(--danger);">
       <div class="modal-header">
@@ -267,18 +242,16 @@
         <button class="close-btn" onclick="closeModal('emergencyModal')">×</button>
       </div>
       <input type="hidden" id="e_caseId">
-      <div class="form-group"><label>事件類型</label><input type="text" id="e_event" value="管線遭挖損"></div>
+      <div class="form-group"><label>事件類型</label><input type="text" id="e_event" value="瓦斯管線遭挖損漏氣"></div>
       <div class="form-group"><label>接獲時間 (HH:MM)</label><input type="time" id="e_time1"></div>
       <div class="form-group"><label>抵達時間</label><input type="text" id="e_time2" value="人員前往中"></div>
-      <div class="form-group"><label>處理情形</label><input type="text" id="e_action" value="現場待命協調中"></div>
-      <div class="form-group"><label>管線形式</label><input type="text" id="e_type" value="待釐清"></div>
-      <div class="form-group"><label>影響範圍</label><input type="text" id="e_impact" value="待釐清"></div>
-      <div class="form-group"><label>現場負責人與電話</label><input type="text" id="e_pic" value="王大明 0912345678"></div>
+      <div class="form-group"><label>處理情形</label><input type="text" id="e_action" value="刻正進行止氣搶修"></div>
+      <div class="form-group"><label>現場負責人與電話</label><input type="text" id="e_pic" value="現場工務 0912-345678"></div>
       <button class="btn-submit" style="background: var(--danger); color: white;" onclick="generateEmergency()">🚨 產生緊急通報文</button>
     </div>
   </div>
 
-  <!-- 5. 自動查驗計算機 Modal -->
+  <!-- 計算機 Modal -->
   <div class="modal-overlay" id="calcModal">
     <div class="modal-content">
       <div class="modal-header">
@@ -299,7 +272,69 @@
     </div>
   </div>
 
-  <!-- 6. 通話小抄 Modal -->
+  <!-- 法規速查 Modal -->
+  <div class="modal-overlay" id="ruleModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>📋 道管中心照片審查規範速查</h3>
+        <button class="close-btn" onclick="closeModal('ruleModal')">×</button>
+      </div>
+      <div class="tab-buttons">
+        <button class="tab-btn active" onclick="switchTab(event, 'tab1')">開工/收工通報</button>
+        <button class="tab-btn" onclick="switchTab(event, 'tab2')">AC鋪面與管溝</button>
+        <button class="tab-btn" onclick="switchTab(event, 'tab3')">孔蓋提升降埋</button>
+        <button class="tab-btn" onclick="switchTab(event, 'tab4')">定位測量(埋深)</button>
+        <button class="tab-btn" onclick="switchTab(event, 'tab5')">平整度量測</button>
+      </div>
+      <div id="tab1" class="tab-pane active script-box">
+        <h4>🟢 開工通報審查</h4>
+        <ul>
+          <li>挖掘前遠景：街景完整，<b>機具不得佔用範圍</b>。</li>
+          <li>告示牌：資訊完整清晰，<b>須張貼路證及交維圖說</b>。</li>
+          <li>證照查驗：監造與現場管理人員須與路證相符、無過期。</li>
+          <li><b>標線預拍：</b> 須由預計銑鋪範圍四角沿對角線拍攝施工前標線。</li>
+        </ul>
+        <h4>🔴 收工通報審查</h4>
+        <ul>
+          <li>管溝修復：面對車行<b>順向(前)與逆向(後)</b>街景，機具全撤。</li>
+          <li>銑鋪噴字：須噴塗「預計銑鋪日期」及「單位簡稱」。</li>
+        </ul>
+      </div>
+      <div id="tab2" class="tab-pane script-box">
+        <h4>🚧 AC鋪面與管溝</h4>
+        <ul>
+          <li>CLSM澆置：照片<b>須能清楚辨識車牌</b>。</li>
+          <li>靜置證明：體重 60kg 人員站立 5 分鐘面層無下陷。</li>
+          <li>AC厚度：管溝 AC <b>≥ 20cm</b>；面層 AC <b>≥ 5cm</b>。</li>
+        </ul>
+      </div>
+      <div id="tab3" class="tab-pane script-box">
+        <h4>🕳️ 孔蓋提升 / 降埋</h4>
+        <ul>
+          <li>降埋深度：降埋至少 <b>20cm 以上</b>。</li>
+          <li>孔底深度：水平箱尺直立，從孔底垂直起算至路面。</li>
+          <li>高低誤差：使用<b>三米尺規</b>量測前、中、後高低差。</li>
+        </ul>
+      </div>
+      <div id="tab4" class="tab-pane script-box">
+        <h4>📏 定位測量（埋深量測）</h4>
+        <ul>
+          <li><b>法定埋深：</b> 快慢車道≥120cm；巷道(4m下)≥70cm；人行道≥50cm。</li>
+          <li><b>白板必填：</b> 施工日期、工程名稱、案號、地點、測點編號、管線埋深。</li>
+          <li>箱尺操作：垂直箱尺須<b>用手扶正</b>（<b>嚴禁放於鋼筋上</b>）。</li>
+        </ul>
+      </div>
+      <div id="tab5" class="tab-pane script-box">
+        <h4>📐 臨時路面平整度量測</h4>
+        <ul>
+          <li><b>工具強制規定：</b> 必須採用<b>「半米尺規」</b>（非三米尺規）。</li>
+          <li>量測頻率：管溝長度 &gt; 20m 者，<b>每隔 20m 量測 1 次</b>。</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <!-- 通話小抄 Modal -->
   <div class="modal-overlay" id="scriptModal">
     <div class="modal-content">
       <div class="modal-header">
@@ -308,42 +343,76 @@
       </div>
       <div class="script-box">
         <h4>無畫面 / 遮擋鏡頭 (限15分)</h4>
-        <p class="script-text">「您好，道管中心。請問是案號現場負責人嗎？我們系統看你們攝影機沒有畫面或被擋住了。請立刻調整，規定要在15分鐘內改善完成，我們已開始計時，弄好請在群組回報，逾時會記點，謝謝。」</p>
+        <p class="script-text">「您好，道管中心。請問是案號現場負責人嗎？系統看攝影機沒有畫面/被擋住。請立刻調整，規定15分鐘內改善完成，我們已開始計時，弄好請群組回報，逾時記點，謝謝。」</p>
       </div>
       <div class="script-box">
         <h4>證照不符 / 缺證照</h4>
-        <p class="script-text">「您好，道管中心。經核對你們上傳的開工資料，現場監造/現場管理人員證照與打卡人員不符(或已過期)。依規定人員需與路證相符並全程配戴，請立即更換合格人員並補正資料。」</p>
+        <p class="script-text">「您好，道管中心。核對開工資料，現場監造/管理人員證照與打卡不符(或已過期)。依規定人員需與路證相符並全程配戴，請立即更換合格人員並補正資料。」</p>
       </div>
       <div class="script-box">
-        <h4>查驗照片不符規定 (如：用錯尺)</h4>
-        <p class="script-text">「您好，道管中心。你們剛傳的查驗照片不符規定，例如平整度量測須使用『半米尺規』。請立刻重新量測拍照上傳，以免影響後續結案。」</p>
+        <h4>照片不符規定 (如：用錯尺)</h4>
+        <p class="script-text">「您好，道管中心。自主查驗照片有問題，平整度量測須使用『半米尺規』。請立刻重新量測拍照上傳，以免影響後續結案。」</p>
       </div>
     </div>
   </div>
 
 <script>
 // ==========================================
-// Google Apps Script API 網址
+// 專屬密碼與 Google Apps Script URL
 // ==========================================
+const ACCESS_CODE = "1049"; 
 const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycby8-IPuXyqZ3-N0Cmjssc7PaqVIVGQzMBFvOfQIlIXSgNwS50xvyPMn-3VSoKyYJsP6/exec";
 
 let cases = [];
 
-window.onload = () => {
-  const now = new Date();
-  document.getElementById("e_time1").value = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
-  document.getElementById("newCaseId").value = "00001";
-  addCase();
-};
+function handleEnter(e) { if (e.key === 'Enter') verifyCode(); }
+function verifyCode() {
+  if (document.getElementById("authCode").value === ACCESS_CODE) {
+    document.getElementById("lockScreen").style.display = "none";
+    document.getElementById("mainSystem").style.display = "block";
+    const now = new Date();
+    document.getElementById("e_time1").value = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+    
+    // 初始化帶入一筆測試資料
+    document.getElementById("newCaseId").value = "348769";
+    addCase();
+  } else {
+    alert("❌ 授權代碼錯誤！");
+    document.getElementById("authCode").value = "";
+  }
+}
 
+// 新增案件
 function addCase() {
   const caseId = document.getElementById("newCaseId").value.trim();
   if(!caseId) return;
-  cases.unshift({ id: caseId, timer: null, timeLeft: 0, status: '正常監控中', lastLog: '無', violations: [] });
+
+  cases.unshift({
+    id: caseId,
+    applicant: "台灣自來水公司第十二區管理處",
+    contractor: "昊潤工程有限公司",
+    authority: "新北市政府捷運工程局",
+    district: "樹林區",
+    road: "樹林區潭底里自大安路218號起至大安路222號",
+    workHours: "09~16",
+    startTime: "09:02",
+    finishTime: null,
+    isOvertime: false,
+    otApplyTime: "X",
+    otGroupTime: "X",
+    otReason: "無",
+    timer: null,
+    timeLeft: 0,
+    status: '正常監控中',
+    lastLog: '無',
+    violations: []
+  });
+
   document.getElementById("newCaseId").value = "";
   renderDashboard();
 }
 
+// 渲染面板
 function renderDashboard() {
   const dashboard = document.getElementById("dashboard");
   dashboard.innerHTML = cases.map((c, index) => {
@@ -351,7 +420,7 @@ function renderDashboard() {
     let statusClass = "status-success";
     let textClass = "";
     if (c.violations.length > 0 || c.status.includes('無') || c.status.includes('未')) { statusClass = "status-danger"; textClass = "alert"; }
-    else if (c.status.includes('逾時未申請') || c.status.includes('待命')) { statusClass = "status-warning"; textClass = "alert"; }
+    else if (c.status.includes('逾時未申請') || c.status.includes('待命') || c.isOvertime) { statusClass = "status-warning"; textClass = "alert"; }
 
     let tagsHtml = c.violations.map((v, vIndex) => `
       <div class="tag">⚠️ ${v} <span onclick="removeViolation(${index}, ${vIndex})">×</span></div>
@@ -362,9 +431,13 @@ function renderDashboard() {
         <div class="card-indicator"></div>
         <div class="case-header">
           <span class="case-id"># ${c.id}</span>
-          <span class="case-remove" onclick="removeCase(${index})">✕ 移除</span>
+          <div class="case-tools">
+            <span class="case-edit-btn" onclick="openEditCaseModal(${index})">✏️ 編輯</span>
+            <span class="case-remove" onclick="removeCase(${index})">✕ 移除</span>
+          </div>
         </div>
-        <div class="status-text ${textClass}">⚡ ${c.status} <br><span style="font-size:0.8rem; font-weight:normal; color:var(--text-sub);">上次紀錄: ${c.lastLog}</span></div>
+        <div class="case-subinfo">📍 ${c.district} | ${c.road}</div>
+        <div class="status-text ${textClass}">⚡ ${c.status} <br><span style="font-size:0.8rem; font-weight:normal; color:var(--text-sub);">時段: ${c.workHours} | 上次紀錄: ${c.lastLog}</span></div>
         
         <div class="violation-tags">${tagsHtml}</div>
 
@@ -378,21 +451,28 @@ function renderDashboard() {
         <div class="timer-display" id="timer-${index}">15:00</div>
         
         <div class="bottom-actions">
-          <button class="btn-violation" onclick="openViolationModal(${index})">➕ 標記違規 / 缺證照 / 交維缺失</button>
+          <button class="btn-violation" onclick="openViolationModal(${index})">➕ 標記違規 / 缺證照 / 照片缺失</button>
           <div class="report-group">
             <button class="btn-report" onclick="openModal('overtimeModal', ${index})">📝 逾時通報</button>
             <button class="btn-emergency" onclick="openModal('emergencyModal', ${index})">🚨 緊急挖損</button>
           </div>
-          <button class="btn-log" onclick="logData(${index})">
-            ☁️ 同步狀態至雲端報表
-          </button>
-          <button class="btn-action green" style="width:100%; border-color:var(--success); color:var(--success);" onclick="setTimer(${index}, '正常收工', 0)">✅ 確認正常收工撤場</button>
+          <button class="btn-log" onclick="logData(${index})">☁️ 同步狀態至雲端報表</button>
+          <button class="btn-action green" style="width:100%; border-color:var(--success); color:var(--success);" onclick="markComplete(${index})">✅ 確認正常收工撤場</button>
         </div>
       </div>
     `;
   }).join("");
 }
 
+// 正常收工
+function markComplete(index) {
+  const now = new Date();
+  const timeStr = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+  cases[index].finishTime = timeStr;
+  setTimer(index, '正常收工', 0);
+}
+
+// 計時器
 function setTimer(index, statusText, minutes) {
   const c = cases[index];
   c.status = statusText;
@@ -422,7 +502,34 @@ function setTimer(index, statusText, minutes) {
   }
 }
 
-// 違規標籤管理
+// 編輯案件
+function openEditCaseModal(index) {
+  const c = cases[index];
+  document.getElementById("ec_index").value = index;
+  document.getElementById("ec_contractor").value = c.contractor;
+  document.getElementById("ec_authority").value = c.authority;
+  document.getElementById("ec_district").value = c.district;
+  document.getElementById("ec_road").value = c.road;
+  document.getElementById("ec_workHours").value = c.workHours;
+  document.getElementById("ec_startTime").value = c.startTime;
+  openModal('editCaseModal');
+}
+
+function saveCaseDetails() {
+  const index = document.getElementById("ec_index").value;
+  const c = cases[index];
+  c.contractor = document.getElementById("ec_contractor").value;
+  c.authority = document.getElementById("ec_authority").value;
+  c.district = document.getElementById("ec_district").value;
+  c.road = document.getElementById("ec_road").value;
+  c.workHours = document.getElementById("ec_workHours").value;
+  c.startTime = document.getElementById("ec_startTime").value;
+  closeModal('editCaseModal');
+  renderDashboard();
+  alert(`✅ 案號 ${c.id} 詳細資訊已更新！`);
+}
+
+// 違規標籤
 function openViolationModal(index) {
   document.getElementById("v_caseIndex").value = index;
   document.getElementById("violationModal").style.display = "flex";
@@ -457,13 +564,13 @@ function logData(index) {
   c.lastLog = timeStr;
   renderDashboard();
 
-  const vSummary = c.violations.length > 0 ? ` [違規: ${c.violations.join(', ')}]` : '';
+  const vSummary = c.violations.length > 0 ? ` [缺失: ${c.violations.join(', ')}]` : '';
 
   fetch(GOOGLE_SCRIPT_URL, {
     method: 'POST', mode: 'no-cors',
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
     body: JSON.stringify({ time: timeStr, caseId: c.id, status: c.status + vSummary, remark: "戰情室快速登錄" })
-  }).then(() => alert(`✅ 案號 ${c.id} 狀態與違規紀錄已同步雲端！`));
+  }).then(() => alert(`✅ 案號 ${c.id} 狀態與缺失紀錄已同步至 Google 雲端試算表！`));
 }
 
 function removeCase(index) {
@@ -474,7 +581,98 @@ function removeCase(index) {
   }
 }
 
-// ================= Modal 與頁籤控制 =================
+// ================= 一鍵匯出 39 欄官方 EXCEL 報表引擎 =================
+function exportToExcel() {
+  if (cases.length === 0) {
+    alert("目前沒有任何監控案件，請先新增案件！");
+    return;
+  }
+
+  const now = new Date();
+  const dateStr = `${now.getFullYear()}/${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getDate().toString().padStart(2,'0')}`;
+  const fileDateStr = `${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}`;
+
+  // 1. 建置官方 39 欄表頭結構
+  const headers = [
+    // Row 1
+    ["道路挖掘案件開工及收工打卡情形(每日)", ...Array(38).fill("")],
+    // Row 2
+    ["序號", "日期", "案號", "申請單位", "施工廠商", "路權機關", "行政區", "施工地點", "敏感性及重要幹道", "", "", "施工時段", "開工通報\n時間", "攝影機情形", "", "", "", "案件監控系統審查", "", "", "", "", "案件監控系統審查", "", "", "", "孔蓋工程", "", "", "逾時通報", "", "", "", "逾時原因", "遇管障是否通報", "收工通報\n時間", "實際收工\n時間", "是否\n逾時\n(駐點先依收工通報時間初判)", "施工通報紀錄\n(無法打卡原因、開(收)工及自主查(含定位測量)驗照片情形或其他等各項狀況記錄)"],
+    // Row 3
+    ["", "", "", "", "", "", "", "", "", "", "", "", "", "是否架設", "未全程攝影\n(無此工項者，請於欄位填寫\"X\")", "", "", "畫面查驗", "", "", "", "開工通報", "自主查驗", "監控影像", "定位測量", "收工通報", "孔蓋提升\n(降埋)工程 ", "", "", "申請(核准)時間", "路權是否線上審核完畢", "已逾時案件15分鐘內/敏感路段兩小時前是否通報", "通報群組時間", "", "", "", "", "", ""],
+    // Row 4
+    ["", "", "", "", "", "", "", "", "是否\n位於", "當日施工前、進場、逾時、收工，是否通報NTPC群組", "異常狀況或逾時尖峰時段(6:30~9:00；17:00~19:00)恐嚴重影響交通，現場管理或監造人員應提早通報路權機關、交控中心、道管中心及當地分局派出所，並加派義交人員指揮", "", "", "", "違規態樣", "是否交維機具全部撤離後才移除畫面", "群組通報時間", "交維是否符合計畫書", "是否故意遮擋、轉向或關機等情形", "有無原土回填情形", "關閉攝影機前是否有環視工區並經駐點人員確認", "相關照片及人員證照是否上傳正確", "施工照片是否上傳正確", "影像是否審查完成", "管線埋設深度量測是否正確", "收工照片是否上傳正確", "施作數量\n(孔)", "降埋\n深度\n(m)", "孔底深度\n(m)", "", "", "", "", "", "", "", "", "", ""],
+    // Row 5: 官方標準範本列
+    ["範本", "2026/03/01", "250512", "中華電信股份有限公司臺灣北區電信分公司新北營運處第二客戶網路中心", "漢維營造有限公司", "中和區公所", "中和區", "立人街46號", "是\n否", "非此類路段\n依規定通報\n未依規定通報", "非此類路段\n無異常狀況或逾時\n依規定通報\n未依規定通報", "09~16", "09:15", "是\n否", "無架設\n無畫面(15:30~16:00)\n不需架設", "是\n否(原因)", "16:10 \n未通報", "無架設\n是\n否\n\n\n以上缺失已通知改善", "無架設\n是(時間)\n否\n\n\n以上缺失已通知改善", "無架設\n有(時間)\n疑似(時間)\n無\n\n以上缺失已通知改善", "是\n否", "是\n否(填寫無法立即改善原因填寫於備註)\n\n例：挖掘前照片已遭施工機具佔用", "是\n否(填寫無法立即改善原因填寫於備註)\n\n例：鋼筋加固照片漏拍", "是\n否(填寫無法立即改善原因填寫於備註)\n\n例：系統更新無法審查", "是\n否(填寫無法立即改善原因填寫於備註)\n\n例：轉折點漏拍且管溝已回填", "是\n否(填寫無法立即改善原因填寫於備註)", "4", "0.21\n0.22\n0.23\n0.24", "2.1\n2.2\n2.3\n2.4", "18:30", "是/否", "未通報\n是\n否", "16:10 \n未通報", "挖損管線\n遇管障\n待CLSM料\n待AC料\n機具故障\n下雨\n其他(原因)\n(上述原因擇一)", "無管障\n是\n否\n(擇一)", "18:45", "18:20", "是/否", "挖掘前有誤(已被機具佔用)。\n施工告示牌有誤(太遠不清楚)。\n定位測量照片缺少(管線埋設深度測量-轉折點(含水平及垂直變異點))。"]
+  ];
+
+  // 2. 轉換所有監控中的案件資料至 39 欄
+  const dataRows = cases.map((c, idx) => {
+    let remarks = "查無異常";
+    if (c.violations.length > 0) {
+      remarks = c.violations.join("；");
+    } else if (c.status.includes("無畫面")) {
+      remarks = "攝影機無畫面，已通知改善";
+    }
+
+    const isOt = c.isOvertime ? "是" : "否";
+    const finish = c.finishTime || (c.status.includes("正常收工") ? (c.lastLog !== "無" ? c.lastLog : "17:12") : "施工中");
+
+    return [
+      idx + 1,                                                          // Col 1: 序號
+      dateStr,                                                          // Col 2: 日期
+      c.id,                                                             // Col 3: 案號
+      c.applicant,                                                      // Col 4: 申請單位
+      c.contractor,                                                     // Col 5: 施工廠商
+      c.authority,                                                      // Col 6: 路權機關
+      c.district,                                                       // Col 7: 行政區
+      c.road,                                                           // Col 8: 施工地點
+      "是",                                                             // Col 9: 敏感幹道
+      "非此類路段",                                                     // Col 10: NTPC群組通報
+      "非此類路段",                                                     // Col 11: 尖峰時段通報
+      c.workHours,                                                      // Col 12: 施工時段
+      c.startTime,                                                      // Col 13: 開工通報時間
+      "是",                                                             // Col 14: 攝影機是否架設
+      c.status.includes("無畫面") ? `無畫面(${c.lastLog !== '無' ? c.lastLog : '15:30'}~改善)` : "X", // Col 15: 違規態樣
+      "是",                                                             // Col 16: 機具撤離才移除畫面
+      c.status.includes("無畫面") ? (c.lastLog !== "無" ? c.lastLog : "10:30") : "X", // Col 17: 群組通報時間
+      c.violations.some(v => v.includes("交維")) ? "否" : "是",         // Col 18: 交維是否符合計畫書
+      c.status.includes("遮擋") ? "是" : "否",                          // Col 19: 是否故意遮擋
+      "無",                                                             // Col 20: 有無原土回填
+      "是",                                                             // Col 21: 關閉前環視工區
+      c.violations.some(v => v.includes("證照")) ? "否(缺證照)" : "是", // Col 22: 開工照片證照
+      c.violations.some(v => v.includes("尺規") || v.includes("自主")) ? "否" : "是", // Col 23: 自主查驗照片
+      "是",                                                             // Col 24: 影像是否審查完成
+      c.violations.some(v => v.includes("定位") || v.includes("白板")) ? "否" : "是", // Col 25: 定位測量深度
+      "是",                                                             // Col 26: 收工照片
+      "X",                                                              // Col 27: 孔蓋施作數量
+      "X",                                                              // Col 28: 降埋深度
+      "X",                                                              // Col 29: 孔底深度
+      c.isOvertime ? c.otApplyTime : "X",                               // Col 30: 申請核准時間
+      c.isOvertime ? "是" : "X",                                        // Col 31: 路權是否線上審核
+      c.isOvertime ? "是" : "X",                                        // Col 32: 逾時及時通報
+      c.isOvertime ? c.otGroupTime : "X",                               // Col 33: 通報群組時間
+      c.isOvertime ? c.otReason : "無",                                 // Col 34: 逾時原因
+      "無管障",                                                         // Col 35: 遇管障通報
+      finish,                                                           // Col 36: 收工通報時間
+      finish,                                                           // Col 37: 實際收工時間
+      isOt,                                                             // Col 38: 是否逾時
+      remarks                                                           // Col 39: 施工通報紀錄
+    ];
+  });
+
+  // 3. 封裝工作表與檔案下載
+  const fullSheetData = [...headers, ...dataRows];
+  const ws = XLSX.utils.aoa_to_sheet(fullSheetData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "一般申挖");
+
+  const filename = `${fileDateStr}_台水12區_道路挖掘案件開工及收工打卡.xlsx`;
+  XLSX.writeFile(wb, filename);
+  alert(`✅ 報表匯出成功！已自動產生官方 39 欄報表：\n${filename}`);
+}
+
+// Modal 控制
 function openModal(modalId, index = null) {
   if(index !== null) {
     if(modalId === 'overtimeModal') document.getElementById("o_caseId").value = cases[index].id;
@@ -485,19 +683,18 @@ function openModal(modalId, index = null) {
 function closeModal(modalId) { document.getElementById(modalId).style.display = "none"; }
 
 function switchTab(evt, tabId) {
-  const panes = document.querySelectorAll(".tab-pane");
-  panes.forEach(p => p.classList.remove("active"));
-  const btns = document.querySelectorAll(".tab-btn");
-  btns.forEach(b => b.classList.remove("active"));
+  document.querySelectorAll(".tab-pane").forEach(p => p.classList.remove("active"));
+  document.querySelectorAll(".tab-btn").forEach(b => b.classList.remove("active"));
   document.getElementById(tabId).classList.add("active");
   evt.currentTarget.classList.add("active");
 }
 
-// ================= 通報生成器 =================
+// 逾時通報
 function generateOvertime() {
   const caseId = document.getElementById("o_caseId").value;
   const groupTitle = document.getElementById("o_groupTitle").value;
   const times = document.getElementById("o_times").value;
+  const reason = document.getElementById("o_reason").value;
   const endTime = document.getElementById("o_endTime").value;
   
   const now = new Date();
@@ -509,34 +706,41 @@ function generateOvertime() {
     if (diff > 0) { hrs = Math.floor(diff/3600000); mins = Math.floor((diff%3600000)/60000); }
   }
 
-  let suffix = times === "3" ? "第3次(已收工)通報" : `第${times}次通報`;
-  let text = `【道管中心-${groupTitle}-通報】\n${now.getMonth()+1}/${now.getDate()}日間「已申請逾時待核准仍在施工中案」${suffix}：\n一、案號：${caseId}\n二、施工單位：${document.getElementById('o_company').value}\n三、路權單位：${document.getElementById('o_authority').value}\n四、施工路段：${document.getElementById('o_road').value}\n五、佔用情形：${document.getElementById('o_occupation').value}\n六、已逾時:${hrs}小時${mins}分鐘(應收工${endTime}，已申請逾時，待路權機關核准)\n以上逾時案件通報各路權單位知悉!`;
+  // 標記案件狀態為逾時
+  const targetCase = cases.find(c => c.id === caseId);
+  if (targetCase) {
+    targetCase.isOvertime = true;
+    targetCase.otApplyTime = "18:00";
+    targetCase.otGroupTime = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+    targetCase.otReason = reason;
+    targetCase.status = `逾時通報(第${times}次)`;
+    renderDashboard();
+  }
 
-  navigator.clipboard.writeText(text).then(() => { alert("✅ 逾時通報文已複製！"); closeModal('overtimeModal'); });
+  let suffix = times === "3" ? "第3次(已收工)通報" : `第${times}次通報`;
+  let text = `【道管中心-${groupTitle}-通報】\n${now.getMonth()+1}/${now.getDate()}日間「已申請逾時待核准仍在施工中案」${suffix}：\n一、案號：${caseId}\n二、施工單位：${targetCase ? targetCase.contractor : '外包廠商'}\n三、路權單位：${targetCase ? targetCase.authority : '區公所'}\n四、施工路段：${targetCase ? targetCase.road : '施工路段'}\n五、佔用情形：雙向佔用單側車道\n六、已逾時:${hrs}小時${mins}分鐘(應收工${endTime}，已申請逾時待核准)\n七、原因：${reason}\n以上逾時案件通報各路權單位知悉!`;
+
+  navigator.clipboard.writeText(text).then(() => { alert("✅ 逾時通報文已複製，並已同步標記至 Excel 報表逾時欄位！"); closeModal('overtimeModal'); });
 }
 
+// 緊急通報
 function generateEmergency() {
   const caseId = document.getElementById("e_caseId").value;
   const now = new Date();
-  
-  let text = `【道管中心-緊急通報】\n一、事件：案號 ${caseId} (${document.getElementById('e_event').value})\n二、接獲時間：${now.getFullYear()-1911}年${now.getMonth()+1}月${now.getDate()}日 ${document.getElementById('e_time1').value}\n三、抵達時間：${document.getElementById('e_time2').value}\n四、處理情形：${document.getElementById('e_action').value}\n五、管線形式：${document.getElementById('e_type').value}\n六、影響範圍：${document.getElementById('e_impact').value}\n七、現場負責人：${document.getElementById('e_pic').value}\nPS: 請隨時回報最新情形並上傳照片`;
-
+  let text = `【道管中心-緊急通報】\n一、事件：案號 ${caseId} (${document.getElementById('e_event').value})\n二、接獲時間：${now.getFullYear()-1911}年${now.getMonth()+1}月${now.getDate()}日 ${document.getElementById('e_time1').value}\n三、抵達時間：${document.getElementById('e_time2').value}\n四、處理情形：${document.getElementById('e_action').value}\n五、現場負責人：${document.getElementById('e_pic').value}\nPS: 請隨時回報最新情形並上傳照片`;
   navigator.clipboard.writeText(text).then(() => { alert("🚨 緊急通報文已複製！"); closeModal('emergencyModal'); });
 }
 
-// ================= 計算機邏輯 =================
+// 計算機
 function checkAC() {
   const ac1 = parseFloat(document.getElementById('c_ac1').value) || 0;
   const ac2 = parseFloat(document.getElementById('c_ac2').value) || 0;
   const res = document.getElementById('acResult');
-  
   if(ac1===0 && ac2===0) { res.style.display = 'none'; return; }
   res.style.display = 'block';
-  
   let msg = [];
   if(ac1 > 0) msg.push(`管溝AC: ${ac1 >= 20 ? '✅ 合格' : '❌ 不合格 (需≥20cm)'}`);
   if(ac2 > 0) msg.push(`面層AC: ${ac2 >= 5 ? '✅ 合格' : '❌ 不合格 (需≥5cm)'}`);
-  
   res.innerHTML = msg.join("<br>");
   res.className = (ac1 > 0 && ac1 < 20) || (ac2 > 0 && ac2 < 5) ? 'calc-result fail' : 'calc-result';
 }
@@ -545,14 +749,13 @@ function checkPoints() {
   const len = parseFloat(document.getElementById('c_len').value) || 0;
   const res = document.getElementById('lenResult');
   if(len <= 0) { res.style.display = 'none'; return; }
-  
   res.style.display = 'block';
   if(len <= 20) {
     res.innerHTML = "✅ 管溝 ≤ 20m<br>需量測 3 點：<b>起點、中心處、終點</b>";
     res.className = 'calc-result';
   } else {
     let extra = Math.floor(len / 20);
-    res.innerHTML = `⚠️ 管溝 > 20m<br>除起訖點外，<b>須每 20m 量測 1 次</b>（使用半米尺規）。<br>約需量測 <b>${extra + 2}</b> 個點位。`;
+    res.innerHTML = `⚠️ 管溝 > 20m<br>除起訖點外，<b>每 20m 量測 1 次</b>（使用半米尺規）。<br>約需量測 <b>${extra + 2}</b> 個點位。`;
     res.className = 'calc-result fail';
   }
 }
